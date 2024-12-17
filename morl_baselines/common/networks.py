@@ -86,7 +86,51 @@ class NatureCNN(nn.Module):
             observations = observations.unsqueeze(0)
         return self.linear(self.cnn(observations / 255.0))
 
+class CustomCNN(nn.Module):#TODO refactor
+    """Asad CNN"""
 
+    def __init__(self, observation_shape: np.ndarray, features_dim: int = 512):
+        """Asad CNN
+
+        Args:
+            observation_shape: Shape of the observation.
+            features_dim: Number of features extracted. This corresponds to the number of unit for the last layer.
+        """
+        super().__init__()
+        self.features_dim = features_dim
+        self.feature_extractor = nn.Sequential(
+            layer_init_alt(nn.Conv2d(4, 32, 3, padding=1)),#pixel observations, out channels 32
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+            layer_init_alt(nn.Conv2d(32, 64, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+            layer_init_alt(nn.Conv2d(64, 128, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+            nn.Flatten(),
+            layer_init_alt(nn.Linear(128 * 8 * 8, 512)),
+            # nn.ReLU(),
+        )
+    # Compute shape by doing one forward pass
+        # with th.no_grad():
+        #     n_flatten = self.feature_extractor(th.as_tensor(np.zeros(observation_shape)[np.newaxis]).float()).shape[1]
+
+        self.linear = nn.Sequential(nn.Linear(512, features_dim), nn.ReLU())
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        """Predicts the features from the observations.
+
+        Args:
+            observations: current observations
+        """
+        # print(observations.shape)
+        # if observations.dim() == 3:
+        #     observations = observations.unsqueeze(0)
+        # print(observations.shape)
+        # exit()
+        return self.linear(self.feature_extractor(observations / 255.0))
+    
 def huber(x, min_priority=0.01):
     """Huber loss function.
 
@@ -155,3 +199,8 @@ def layer_init(layer, method="orthogonal", weight_gain: float = 1, bias_const: f
         elif method == "orthogonal":
             th.nn.init.orthogonal_(layer.weight, gain=weight_gain)
         th.nn.init.constant_(layer.bias, bias_const)
+
+def layer_init_alt(layer, std=np.sqrt(2), bias_const=0.0): #TODO refactor
+    th.nn.init.orthogonal_(layer.weight, std)
+    th.nn.init.constant_(layer.bias, bias_const)
+    return layer

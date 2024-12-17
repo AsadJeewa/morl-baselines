@@ -20,6 +20,7 @@ from morl_baselines.common.evaluation import (
 from morl_baselines.common.morl_algorithm import MOAgent, MOPolicy
 from morl_baselines.common.networks import (
     NatureCNN,
+    CustomCNN,
     get_grad_norm,
     layer_init,
     mlp,
@@ -50,7 +51,8 @@ class QNet(nn.Module):
             self.feature_extractor = None
             input_dim = obs_shape[0] + rew_dim
         elif len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=512)
+            # self.feature_extractor = NatureCNN(self.obs_shape, features_dim=512)
+            self.feature_extractor = CustomCNN(self.obs_shape, features_dim=512) #TODO refactor
             input_dim = self.feature_extractor.features_dim + rew_dim
         # |S| + |R| -> ... -> |A| * |R|
         self.net = mlp(input_dim, action_dim * rew_dim, net_arch)
@@ -536,18 +538,23 @@ class Envelope(MOPolicy, MOAgent):
         tensor_w = th.tensor(w).float().to(self.device)
 
         for _ in range(1, total_timesteps + 1):
+            print(_," of total timesteps: ", total_timesteps)
+            # print(num_episodes," of total episodes: ", total_episodes)
             if total_episodes is not None and num_episodes == total_episodes:
                 break
 
             if self.global_step < self.learning_starts:
                 action = self.env.action_space.sample()
             else:
+                # print(th.as_tensor(obs))
+                print(th.as_tensor(obs).shape)    
+                # exit()
                 action = self.act(th.as_tensor(obs).float().to(self.device), tensor_w)
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
 
-            self.replay_buffer.add(obs, action, vec_reward, next_obs, terminated)
+            self.replay_buffer.add(obs.transpose(2, 0, 1), action, vec_reward, next_obs.transpose(2, 0, 1), terminated)#TODO fix
             if self.global_step >= self.learning_starts:
                 self.update()
 
