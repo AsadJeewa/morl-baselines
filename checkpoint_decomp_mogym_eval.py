@@ -7,7 +7,7 @@ import numpy as np
 
 # --- Load checkpoint ---
 # checkpoint_path = "checkpoint/four-room-test/checkpoint_2480.pt"  # adjust path
-checkpoint_path = "checkpoint/four-room-easy/checkpoint_4880.pt"  # adjust path
+checkpoint_path = "checkpoint/four-room-easy/agents_checkpoint_4880.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load(checkpoint_path, map_location=device)
 
@@ -25,7 +25,7 @@ def make_env(env_id, obj_idx, seed=None):
 
     return thunk
 
-idx = 2
+idx = 0
 env_id = "four-room-easy-v0"
 env = gym.vector.SyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
 

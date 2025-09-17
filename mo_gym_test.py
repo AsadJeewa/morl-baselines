@@ -2,8 +2,11 @@ import gymnasium as gym
 import mo_gymnasium as mo_gym
 import numpy as np
 # from gymnasium.utils.play import play
+from cleanrl_utils.utils import get_base_env
 
-env = mo_gym.make('resource-gathering-v0', render_mode="human")
+# env = mo_gym.make('resource-gathering-v0', render_mode="human")
+env_id = "four-room-easy-v0"
+env = mo_gym.make(env_id, render_mode="human")
 env = mo_gym.wrappers.SingleRewardWrapper(env, 2)
 # play(env,zoom=3)#only mario it seems
 
@@ -14,9 +17,11 @@ obs, info = env.reset()
 
 done = False
 steps = 0
-sum_ep_rewards = 0
-num_iterations = 10
-for iteration in range(1, num_iterations + 1):
+num_obj = get_base_env(env.env).reward_dim
+sum_ep_rewards = np.zeros(num_obj, dtype=np.float32)
+
+num_ep = 10
+for ep in range(1, num_ep + 1):
     while not done:
         action = np.random.randint(env.action_space.n)
         obs, vec_reward, terminated, truncated, info = env.step(action)#(env.action_space.sample())

@@ -1,6 +1,6 @@
 # Run `pip install "gymnasium[classic-control]"` for this example.
 import gymnasium as gym
-
+import numpy as np
 # Create our training environment - a cart with a pole that needs balancing
 env = gym.make("CartPole-v1", render_mode="human")
 
@@ -12,23 +12,28 @@ observation, info = env.reset()
 print(f"Starting observation: {observation}")
 # Example output: [ 0.01234567 -0.00987654  0.02345678  0.01456789]
 # [cart_position, cart_velocity, pole_angle, pole_angular_velocity]
-
+num_ep = 5
 episode_over = False
 total_reward = 0
+total_rewards = []
 
-while not episode_over:
-    # Choose an action: 0 = push cart left, 1 = push cart right
-    action = env.action_space.sample()  # Random action for now - real agents will be smarter!
+for ep in range(num_ep):
+    while not episode_over:
+        # Choose an action: 0 = push cart left, 1 = push cart right
+        action = env.action_space.sample()  # Random action for now - real agents will be smarter!
 
-    # Take the action and see what happens
-    observation, reward, terminated, truncated, info = env.step(action)
+        # Take the action and see what happens
+        observation, reward, terminated, truncated, info = env.step(action)
 
-    # reward: +1 for each step the pole stays upright
-    # terminated: True if pole falls too far (agent failed)
-    # truncated: True if we hit the time limit (500 steps)
+        # reward: +1 for each step the pole stays upright
+        # terminated: True if pole falls too far (agent failed)
+        # truncated: True if we hit the time limit (500 steps)
 
-    total_reward += reward
-    episode_over = terminated or truncated
+        total_reward += reward
+        episode_over = terminated or truncated
 
-print(f"Episode finished! Total reward: {total_reward}")
+    print(f"Episode finished! Total reward: {total_reward}")
+    total_rewards.append(total_reward)
+    episode_over = False
 env.close()
+print(f"All episodes finished! Mean reward: {np.mean(total_rewards):.3f} ± {np.std(total_rewards):.3f}")
