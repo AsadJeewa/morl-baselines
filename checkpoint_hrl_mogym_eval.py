@@ -70,12 +70,14 @@ for seed in tqdm(range(num_seeds)):
             with torch.no_grad():
                 hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(obs_tensor)
                 base_env.log_info = hl_action
+                spec_obs = base_env.update_specialisation(hl_action.item()+1)
                 for k in range(obj_duration): #each env is seperate
-                    obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
-                    action, _, _, _ = agents[hl_action].get_action_and_value(obs_tensor)
+                    obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
+                    action, _, _, _ = agents[hl_action].get_action_and_value(obs_tensor) #take action based on speciliased state
                     # Convert to numpy and step
                     action_np = action.cpu().numpy()
                     obs, reward, terminated, truncated, info = env.step(action_np)
+                    spec_obs = base_env.get_spec_obs()
                     time.sleep(1)
                     ep_reward += reward
                     # Only one environment in batch, so index 0

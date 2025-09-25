@@ -4,6 +4,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics, SingleRewardWrapper
 from cleanrl.moppo_decomp import Agent
 import gymnasium as gym
 import numpy as np
+from cleanrl_utils.utils import get_base_env
 
 # --- Load checkpoint ---
 # checkpoint_path = "checkpoint/four-room-test/checkpoint_2480.pt"  # adjust path
@@ -14,9 +15,12 @@ checkpoint = torch.load(checkpoint_path, map_location=device)
 
 
 # --- Environment factory ---
-def make_env(env_id, obj_idx, seed=None):
+def make_env(env_id, obj_idx, render=False, seed=None):
     def thunk():
-        env = mo_gym.make(env_id)
+        if render:
+            env = mo_gym.make(env_id, render_mode="human")
+        else:
+            env = mo_gym.make(env_id)
         env = MORecordEpisodeStatistics(env, gamma=0.98)
         env = SingleRewardWrapper(env, obj_idx)
         if seed is not None:
@@ -25,7 +29,7 @@ def make_env(env_id, obj_idx, seed=None):
 
     return thunk
 
-idx = 0
+idx = 1
 env_id = "four-room-easy-v0"
 env = gym.vector.SyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
 
@@ -42,21 +46,22 @@ num_seeds = 3
 episodes_per_seed = 500
 all_rewards = []
 for seed in range(num_seeds):
-    env = gym.vector.SyncVectorEnv([make_env(env_id,idx,seed) for _ in range(1)])  # single env
+    env = gym.vector.SyncVectorEnv([make_env(env_id,idx,render=True,seed=seed) for _ in range(1)])  # single env
+    base_env = get_base_env(env.envs[0])
+    spec_obs = base_env.update_specialisation(idx+1)
     for ep in range(episodes_per_seed):
         obs, _ = env.reset(seed=seed)
         done = False
         total_reward = 0.0
         while not done:
             # obs is already batched for vector env
-            obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
-
+            obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
             with torch.no_grad():
                 action, _, _, _ = agent.get_action_and_value(obs_tensor)
-
             # Convert to numpy and step
             action_np = action.cpu().numpy()
             obs, reward, terminated, truncated, info = env.step(action_np)
+            spec_obs = base_env.get_spec_obs()
             total_reward += reward
             # Only one environment in batch, so index 0
             done = terminated[0] or truncated[0]
