@@ -8,7 +8,8 @@ from cleanrl_utils.utils import get_base_env
 
 # --- Load checkpoint ---
 # checkpoint_path = "checkpoint/four-room-test/checkpoint_2480.pt"  # adjust path
-checkpoint_path = "checkpoint/four-room-easy/agents_checkpoint_4880.pt"  # adjust path
+# checkpoint_path = "../cleanrl/model/shapes-grid/fin_moppo_env__shapes-grid-v0__moppo_decomp__1__1760003876/checkpoint_2160.pt"  # adjust path
+checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load(checkpoint_path, map_location=device)
 
@@ -29,8 +30,8 @@ def make_env(env_id, obj_idx, render=False, seed=None):
 
     return thunk
 
-idx = 1
-env_id = "four-room-easy-v0"
+idx = 2
+env_id = "shapes-grid-v0"
 env = gym.vector.SyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
 
 # --- Create agent and load weights ---
@@ -65,6 +66,8 @@ for seed in range(num_seeds):
             total_reward += reward
             # Only one environment in batch, so index 0
             done = terminated[0] or truncated[0]
+            if done:
+                break
         all_rewards.append(total_reward)
     env.close()
 mean_reward = np.mean(all_rewards)

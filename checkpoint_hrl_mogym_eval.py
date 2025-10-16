@@ -9,9 +9,10 @@ from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
 from cleanrl_utils.utils import get_base_env
 from tqdm import tqdm
 import time
-# --- Load checkpoint ---
-controller_checkpoint_path = "checkpoint/four-room-easy/controller_checkpoint_300.pt"  # adjust path
-agents_checkpoint_path = "checkpoint/four-room-easy/agents_checkpoint_4880.pt"  # adjust path
+import csv
+# --- Load checkpoint --
+controller_checkpoint_path = "../cleanrl/model/shapes-grid/fin_hrl__shapes-grid-v0__hrl_moppo_decomp__1__1760011604/checkpoint_300.pt"
+agents_checkpoint_path = "../cleanrl/model/shapes-grid/fin_moppo_env__shapes-grid-v0__moppo_decomp__1__1760003876/checkpoint_2160.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 agents_checkpoint = torch.load(agents_checkpoint_path, map_location=device)
 controller_checkpoint = torch.load(controller_checkpoint_path, map_location=device)
@@ -34,7 +35,7 @@ def make_env(env_id, obj_idx, render=False, seed=None):
     return thunk
 
 idx = 0
-env_id = "four-room-easy-v0"
+env_id = "shapes-grid-v0"
 env = MOSyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
 obj_duration = 8 #TODO get from model
 # --- Create agent and load weights ---
@@ -52,39 +53,56 @@ for idx, agent in enumerate(agents):
 obs, _ = env.reset(seed=42)
 done = False
 
+step_counter = 0
 num_seeds = 2
 episodes_per_seed = 2
 all_vector_rewards = []
 all_scalar_rewards = []
-for seed in tqdm(range(num_seeds)):
-    env = MOSyncVectorEnv([make_env(env_id,idx,render=True,seed=seed) for _ in range(1)])  # single env
-    base_env = get_base_env(env.envs[0])
-    for ep in tqdm(range(episodes_per_seed)):
-        obs, _ = env.reset(seed=seed)
-        done = False
-        ep_reward = 0.0
-        while not done:
-            # obs is already batched for vector env
-            obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
 
-            with torch.no_grad():
-                hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(obs_tensor)
-                base_env.log_info = hl_action
-                spec_obs = base_env.update_specialisation(hl_action.item()+1)
-                for k in range(obj_duration): #each env is seperate
-                    obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
-                    action, _, _, _ = agents[hl_action].get_action_and_value(obs_tensor) #take action based on speciliased state
-                    # Convert to numpy and step
-                    action_np = action.cpu().numpy()
-                    obs, reward, terminated, truncated, info = env.step(action_np)
-                    spec_obs = base_env.get_spec_obs()
-                    time.sleep(1)
-                    ep_reward += reward
-                    # Only one environment in batch, so index 0
-                    done = terminated[0] or truncated[0]
-        all_vector_rewards.append(ep_reward)
-        all_scalar_rewards.append(np.mean(ep_reward))
+log_file = "hl_action_log.csv"
+with open(log_file, mode="w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["Step", "HighLevelAction"])
+
+
+
+    for seed in tqdm(range(num_seeds)):
+        env = MOSyncVectorEnv([make_env(env_id,idx,render=True,seed=seed) for _ in range(1)])  # single env
+        base_env = get_base_env(env.envs[0])
+        for ep in tqdm(range(episodes_per_seed), desc=f"Seed {seed}"):
+            obs, _ = env.reset(seed=seed)
+            done = False
+            ep_reward = 0.0
+            while not done:
+                # obs is already batched for vector env
+                obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
+
+                with torch.no_grad():
+                    hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(obs_tensor)
+                    base_env.log_info = hl_action
+                    spec_obs = base_env.update_specialisation(hl_action.item()+1)
+                    
+                    # Log the high-level action
+                    writer.writerow([step_counter, hl_action.item()])
+                    step_counter += 1
+                    
+                    for k in range(obj_duration): #each env is seperate
+                        obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
+                        action, _, _, _ = agents[hl_action].get_action_and_value(obs_tensor) #take action based on speciliased state
+                        # Convert to numpy and step
+                        action_np = action.cpu().numpy()
+                        obs, reward, terminated, truncated, info = env.step(action_np)
+                        spec_obs = base_env.get_spec_obs()
+                        # time.sleep(1)
+                        ep_reward += reward
+                        # Only one environment in batch, so index 0
+                        done = terminated[0] or truncated[0]
+                        if done:
+                            break
+            all_vector_rewards.append(ep_reward)
+            all_scalar_rewards.append(np.mean(ep_reward))
         env.close()
+f.close()
 mean_scalar_reward = np.mean(all_scalar_rewards)
 std_scalar_reward = np.std(all_scalar_rewards)
 average_vector_rewards = np.vstack(all_vector_rewards)
