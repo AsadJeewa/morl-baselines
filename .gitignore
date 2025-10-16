@@ -145,3 +145,4 @@ videos/
 .vscode/
 
 *.pt
+*.csv
