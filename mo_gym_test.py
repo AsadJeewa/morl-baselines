@@ -5,7 +5,7 @@ import numpy as np
 from cleanrl_utils.utils import get_base_env
 
 # env = mo_gym.make('resource-gathering-v0', render_mode="human")
-env_id = "four-room-easy-v0"
+env_id = "shapes-grid-v0"
 env = mo_gym.make(env_id, render_mode="human")
 env = mo_gym.wrappers.SingleRewardWrapper(env, 2)
 # play(env,zoom=3)#only mario it seems
