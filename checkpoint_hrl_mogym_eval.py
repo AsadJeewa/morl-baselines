@@ -1,6 +1,6 @@
 import torch
 import mo_gymnasium as mo_gym
-from mo_gymnasium.wrappers import MORecordEpisodeStatistics, SingleRewardWrapper
+from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from cleanrl.moppo_decomp import Agent
 from cleanrl.hrl_moppo_decomp import Controller
 import gymnasium as gym
@@ -11,39 +11,35 @@ from tqdm import tqdm
 import time
 import csv
 # --- Load checkpoint --
-controller_checkpoint_path = "../cleanrl/model/shapes-grid/fin_hrl__shapes-grid-v0__hrl_moppo_decomp__1__1760011604/checkpoint_300.pt"
-agents_checkpoint_path = "../cleanrl/model/shapes-grid/fin_moppo_env__shapes-grid-v0__moppo_decomp__1__1760003876/checkpoint_2160.pt"  # adjust path
+controller_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_HIGH_level_1__shapes-grid-v0__hrl_moppo_decomp__1__1760607246/checkpoint_800.pt"
+agents_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 agents_checkpoint = torch.load(agents_checkpoint_path, map_location=device)
 controller_checkpoint = torch.load(controller_checkpoint_path, map_location=device)
-
-
+RENDER_DELAY = 1
 
 # --- Environment factory ---
-def make_env(env_id, obj_idx, render=False, seed=None):
+def make_env(env_id, render=False, seed=None):
     def thunk():
         if render:
             env = mo_gym.make(env_id, render_mode="human")
         else:
             env = mo_gym.make(env_id)
         env = MORecordEpisodeStatistics(env, gamma=0.98)
-        # env = SingleRewardWrapper(env, obj_idx)
         if seed is not None:
             env.reset(seed=seed)
         return env
 
     return thunk
 
-idx = 0
 env_id = "shapes-grid-v0"
-env = MOSyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
-obj_duration = 8 #TODO get from model
+env = MOSyncVectorEnv([make_env(env_id)]) #expect list of callable of gym env
 # --- Create agent and load weights ---
 base_env = get_base_env(env.envs[0])
 num_objectives = base_env.reward_dim
 controller = Controller(env).to(device)
 controller.load_state_dict(controller_checkpoint["controller"])
-# obj_duration= controller.load_state_dict(controller_checkpoint["obj_duration"])
+obj_duration = controller_checkpoint["obj_duration"]
 agents = [Agent(env).to(device) for i in range(num_objectives)]
 for idx, agent in enumerate(agents):
         agent.load_state_dict(agents_checkpoint["agents"][idx])
@@ -67,7 +63,7 @@ with open(log_file, mode="w", newline="") as f:
 
 
     for seed in tqdm(range(num_seeds)):
-        env = MOSyncVectorEnv([make_env(env_id,idx,render=True,seed=seed) for _ in range(1)])  # single env
+        env = MOSyncVectorEnv([make_env(env_id,render=True,seed=seed) for _ in range(1)])  # single env
         base_env = get_base_env(env.envs[0])
         for ep in tqdm(range(episodes_per_seed), desc=f"Seed {seed}"):
             obs, _ = env.reset(seed=seed)
@@ -93,7 +89,7 @@ with open(log_file, mode="w", newline="") as f:
                         action_np = action.cpu().numpy()
                         obs, reward, terminated, truncated, info = env.step(action_np)
                         spec_obs = base_env.get_spec_obs()
-                        # time.sleep(1)
+                        time.sleep(RENDER_DELAY)
                         ep_reward += reward
                         # Only one environment in batch, so index 0
                         done = terminated[0] or truncated[0]

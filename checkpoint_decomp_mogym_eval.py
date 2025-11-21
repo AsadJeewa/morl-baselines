@@ -5,18 +5,21 @@ from cleanrl.moppo_decomp import Agent
 import gymnasium as gym
 import numpy as np
 from cleanrl_utils.utils import get_base_env
-
+from tqdm import tqdm
 # --- Load checkpoint ---
 # checkpoint_path = "checkpoint/four-room-test/checkpoint_2480.pt"  # adjust path
 # checkpoint_path = "../cleanrl/model/shapes-grid/fin_moppo_env__shapes-grid-v0__moppo_decomp__1__1760003876/checkpoint_2160.pt"  # adjust path
-checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"  # adjust path
+# checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"  # adjust path
+# checkpoint_path = "../cleanrl/model/shapes-grid/toy_1__shapes-grid-v0__moppo_decomp__1__1763472383/checkpoint_120.pt"  # adjust path
+# checkpoint_path = "../cleanrl/model/shapes-grid/toy_2_penalty__shapes-grid-v0__moppo_decomp__1__1763473551/checkpoint_280.pt"  # adjust path
+checkpoint_path = "../cleanrl/model/shapes-grid/toy2_long__shapes-grid-v0__moppo_decomp__1__1763475033/checkpoint_1010.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load(checkpoint_path, map_location=device)
 
 
 
 # --- Environment factory ---
-def make_env(env_id, obj_idx, render=False, seed=None):
+def make_env(env_id, obj_idx=0, render=False, seed=None):
     def thunk():
         if render:
             env = mo_gym.make(env_id, render_mode="human")
@@ -30,7 +33,7 @@ def make_env(env_id, obj_idx, render=False, seed=None):
 
     return thunk
 
-idx = 2
+idx = 0
 env_id = "shapes-grid-v0"
 env = gym.vector.SyncVectorEnv([make_env(env_id, idx)]) #expect list of callable of gym env
 
@@ -46,11 +49,11 @@ done = False
 num_seeds = 3
 episodes_per_seed = 500
 all_rewards = []
-for seed in range(num_seeds):
+for seed in tqdm(range(num_seeds)):
     env = gym.vector.SyncVectorEnv([make_env(env_id,idx,render=True,seed=seed) for _ in range(1)])  # single env
     base_env = get_base_env(env.envs[0])
     spec_obs = base_env.update_specialisation(idx+1)
-    for ep in range(episodes_per_seed):
+    for ep in tqdm(range(episodes_per_seed)):
         obs, _ = env.reset(seed=seed)
         done = False
         total_reward = 0.0
