@@ -25,10 +25,14 @@ from mpl_toolkits.mplot3d import Axes3D  # only needed for 3D plots
 # --- Load checkpoint ---
 #controller_checkpoint_path = "../cleanrl/model/shapes-grid/weights_v0__shapes-grid-v0__weights_hrl_moppo_decomp__1__1762263777/checkpoint_2400.pt"
 #controller_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_HIGH_level_1__shapes-grid-v0__hrl_moppo_decomp__1__1760607246/checkpoint_800.pt"
-controller_checkpoint_path = "../cleanrl/model/shapes-grid/hrl_weights_toy__shapes-grid-v0__weights_hrl_moppo_decomp__1__1763476770/checkpoint_500.pt"
+#controller_checkpoint_path = "../cleanrl/model/shapes-grid/hrl_weights_toy__shapes-grid-v0__weights_hrl_moppo_decomp__1__1763476770/checkpoint_500.pt"
+controller_checkpoint_path = "../cleanrl/model/shapes-grid/cnn_high_level_easy_output_weights__shapes-grid-v0__hrl_moppo_decomp__1__1766410483/checkpoint_50.pt" #NOT TRAINED WEIGHTED
+
 #agents_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"
-agents_checkpoint_path = "../cleanrl/model/shapes-grid/toy2_long__shapes-grid-v0__moppo_decomp__1__1763475033/checkpoint_1010.pt"
-                                                           
+#agents_checkpoint_path = "../cleanrl/model/shapes-grid/toy2_long__shapes-grid-v0__moppo_decomp__1__1763475033/checkpoint_1010.pt"                                     
+agents_checkpoint_path = "../cleanrl/model/shapes-grid/SAVE/cnn_low_level_easy__shapes-grid-v0__moppo_decomp__1__1766138143/checkpoint_410.pt"  # adjust path
+
+                      
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 agents_checkpoint = torch.load(agents_checkpoint_path, map_location=device)
 controller_checkpoint = torch.load(controller_checkpoint_path, map_location=device)
@@ -75,7 +79,7 @@ for seed in range(num_seeds):
         step_counter = 0
         hrl_counter = 0
         while not done:
-            obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
+            hl_obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
             
             # Generate a weight vector for this episode
             # current_weights = torch.tensor(
@@ -86,7 +90,7 @@ for seed in range(num_seeds):
             # current_weights = w = torch.tensor([[1.0, 0.0, 0.0]], dtype=torch.float32).to(device)
             with torch.no_grad():
                 #TODO RESET SO HL DOES NOT USE SPECIALISED OBS
-                hl_action, _, _, _ = controller.get_action_and_value(obs_tensor, current_weights)
+                hl_action, _, _, _ = controller.get_action_and_value(hl_obs_tensor, current_weights)
                 # print(hl_action)
                 hl_action_idx = hl_action.item()
                 hrl_counter+=1
@@ -97,8 +101,9 @@ for seed in range(num_seeds):
             step_counter += 1
             
             for k in range(obj_duration):
-                obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
-                action, _, _, _ = agents[hl_action_idx].get_action_and_value(obs_tensor)
+                ll_obs = base_env.get_specialised_obs()
+                ll_obs_tensor = torch.tensor(ll_obs, dtype=torch.float32, device=device).unsqueeze(0)
+                action, _, _, _ = agents[hl_action_idx].get_action_and_value(ll_obs_tensor)
                 action_np = action.cpu().numpy()
                 
                 obs, reward, terminated, truncated, _ = env.step(action_np)

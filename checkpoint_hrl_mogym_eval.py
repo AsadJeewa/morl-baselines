@@ -57,20 +57,19 @@ with open(log_file, mode="w", newline="") as f:
             ep_reward = 0.0
             while not done:
                 # obs is already batched for vector env
-                obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
-
+                hl_obs_tensor = torch.tensor(obs, dtype=torch.float32, device=device)
                 with torch.no_grad():
                     #TODO RESET SO HL DOES NOT USE SPECIALISED OBS
-                    hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(obs_tensor)
+                    hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(hl_obs_tensor)
                     base_env.log_info = hl_action
-                    spec_obs = base_env.set_specialisation(hl_action.item()+1)
                     # Log the high-level action
                     writer.writerow([step_counter, hl_action.item()])
+                    base_env.set_specialisation(hl_action.item()+1)
                     step_counter += 1
-                    
                     for k in range(obj_duration): #each env is seperate
-                        obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
-                        action, _, _, _ = agents[hl_action].get_action_and_value(obs_tensor) #take action based on speciliased state
+                        ll_obs = base_env.get_specialised_obs()
+                        ll_obs_tensor = torch.tensor(ll_obs, dtype=torch.float32, device=device).unsqueeze(0)
+                        action, _, _, _ = agents[hl_action].get_action_and_value(ll_obs_tensor) #take action based on speciliased state
                         # Convert to numpy and step
                         action_np = action.cpu().numpy()
                         obs, reward, terminated, truncated, info = env.step(action_np)
