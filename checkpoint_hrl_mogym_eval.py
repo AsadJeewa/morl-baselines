@@ -6,34 +6,22 @@ from cleanrl.hrl_moppo_decomp import Controller
 import gymnasium as gym
 import numpy as np
 from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
-from cleanrl_utils.utils import get_base_env
+from cleanrl_utils import get_base_env, make_env
 from tqdm import tqdm
 import time
 import csv
 # --- Load checkpoint --
-controller_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_HIGH_level_1__shapes-grid-v0__hrl_moppo_decomp__1__1760607246/checkpoint_800.pt"
-agents_checkpoint_path = "../cleanrl/model/shapes-grid/larger_grid_low_level__shapes-grid-v0__moppo_decomp__1__1760103414/checkpoint_2440.pt"  # adjust path
+controller_checkpoint_path = "../cleanrl/model/shapes-grid/cnn_high_level_easy_output_weights__shapes-grid-v0__hrl_moppo_decomp__1__1766410483/checkpoint_50.pt"
+agents_checkpoint_path = "../cleanrl/model/shapes-grid/SAVE/cnn_low_level_easy__shapes-grid-v0__moppo_decomp__1__1766138143/checkpoint_410.pt"  # adjust path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 agents_checkpoint = torch.load(agents_checkpoint_path, map_location=device)
 controller_checkpoint = torch.load(controller_checkpoint_path, map_location=device)
 RENDER_DELAY = 1
 
-# --- Environment factory ---
-def make_env(env_id, render=False, seed=None):
-    def thunk():
-        if render:
-            env = mo_gym.make(env_id, render_mode="human")
-        else:
-            env = mo_gym.make(env_id)
-        env = MORecordEpisodeStatistics(env, gamma=0.98)
-        if seed is not None:
-            env.reset(seed=seed)
-        return env
-
-    return thunk
-
 env_id = "shapes-grid-v0"
-env = MOSyncVectorEnv([make_env(env_id)]) #expect list of callable of gym env
+difficulty="easy"
+
+env = MOSyncVectorEnv([make_env(env_id, difficulty=difficulty)]) #expect list of callable of gym env
 # --- Create agent and load weights ---
 base_env = get_base_env(env.envs[0])
 num_objectives = base_env.reward_dim
@@ -60,13 +48,11 @@ with open(log_file, mode="w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["Step", "HighLevelAction"])
 
-
-
     for seed in tqdm(range(num_seeds)):
-        env = MOSyncVectorEnv([make_env(env_id,render=True,seed=seed) for _ in range(1)])  # single env
+        env = MOSyncVectorEnv([make_env(env_id,seed=seed,difficulty=difficulty,render=True) for _ in range(1)])  # single env
         base_env = get_base_env(env.envs[0])
         for ep in tqdm(range(episodes_per_seed), desc=f"Seed {seed}"):
-            obs, _ = env.reset(seed=seed)
+            obs, _ = env.reset(seed=seed)           
             done = False
             ep_reward = 0.0
             while not done:
@@ -74,10 +60,10 @@ with open(log_file, mode="w", newline="") as f:
                 obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
 
                 with torch.no_grad():
+                    #TODO RESET SO HL DOES NOT USE SPECIALISED OBS
                     hl_action, hl_logprob, hl_entropy, hl_value = controller.get_action_and_value(obs_tensor)
                     base_env.log_info = hl_action
-                    spec_obs = base_env.update_specialisation(hl_action.item()+1)
-                    
+                    spec_obs = base_env.set_specialisation(hl_action.item()+1)
                     # Log the high-level action
                     writer.writerow([step_counter, hl_action.item()])
                     step_counter += 1
@@ -88,7 +74,6 @@ with open(log_file, mode="w", newline="") as f:
                         # Convert to numpy and step
                         action_np = action.cpu().numpy()
                         obs, reward, terminated, truncated, info = env.step(action_np)
-                        spec_obs = base_env.get_spec_obs()
                         time.sleep(RENDER_DELAY)
                         ep_reward += reward
                         # Only one environment in batch, so index 0

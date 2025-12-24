@@ -2,9 +2,9 @@ import torch
 import mo_gymnasium as mo_gym
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from cleanrl.moppo_decomp import Agent
-from cleanrl.weights_hrl_moppo_decomp import Controller
+from cleanrl.weighted_hrl_moppo_decomp import Controller
 from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
-from cleanrl_utils.utils import get_base_env
+from cleanrl_utils import get_base_env, make_env
 import numpy as np
 from tqdm import tqdm
 import time
@@ -34,22 +34,11 @@ agents_checkpoint = torch.load(agents_checkpoint_path, map_location=device)
 controller_checkpoint = torch.load(controller_checkpoint_path, map_location=device)
 RENDER_DELAY = 1
 
-# --- Environment factory ---
-def make_env(env_id, render=False, seed=None):
-    def thunk():
-        if render:
-            env = mo_gym.make(env_id, render_mode="human")
-        else:
-            env = mo_gym.make(env_id)
-        env = MORecordEpisodeStatistics(env, gamma=0.98)
-        if seed is not None:
-            env.reset(seed=seed)
-        return env
-    return thunk
-
 env_id = "shapes-grid-v0"
+difficulty="easy"
+
 # --- Create agent and load weights ---
-env = MOSyncVectorEnv([make_env(env_id)])  # single vector env
+env = MOSyncVectorEnv([make_env(env_id, difficulty=difficulty)])  # single vector env
 base_env = get_base_env(env.envs[0])
 num_objectives = base_env.reward_dim
 
@@ -75,7 +64,7 @@ csv_writer.writerow(["Seed", "Episode", "Step", "HighLevelAction"])
 # --- Main evaluation loop ---
 # for seed in tqdm(range(num_seeds), desc="Seeds"):
 for seed in range(num_seeds):
-    env = MOSyncVectorEnv([make_env(env_id, render=True, seed=seed)])
+    env = MOSyncVectorEnv([make_env(env_id,idx,seed=seed,difficulty=difficulty,render=True)])
     base_env = get_base_env(env.envs[0])
     
     for ep in range(episodes_per_seed):
@@ -96,19 +85,19 @@ for seed in range(num_seeds):
             current_weights = (torch.ones(1, num_objectives, dtype=torch.float32) / num_objectives).to(device)
             # current_weights = w = torch.tensor([[1.0, 0.0, 0.0]], dtype=torch.float32).to(device)
             with torch.no_grad():
+                #TODO RESET SO HL DOES NOT USE SPECIALISED OBS
                 hl_action, _, _, _ = controller.get_action_and_value(obs_tensor, current_weights)
                 # print(hl_action)
                 hl_action_idx = hl_action.item()
                 hrl_counter+=1
                 base_env.log_info = hl_action
-                print(hrl_counter,hl_action, obs_tensor, current_weights)
-                spec_obs = base_env.update_specialisation(hl_action_idx + 1)
+                base_env.set_specialisation(hl_action_idx + 1)
             
             csv_writer.writerow([seed, ep, step_counter, hl_action_idx])
             step_counter += 1
             
             for k in range(obj_duration):
-                obs_tensor = torch.tensor(spec_obs, dtype=torch.float32).to(device)
+                obs_tensor = torch.tensor(obs, dtype=torch.float32).to(device)
                 action, _, _, _ = agents[hl_action_idx].get_action_and_value(obs_tensor)
                 action_np = action.cpu().numpy()
                 
@@ -116,7 +105,6 @@ for seed in range(num_seeds):
                 reward = np.array(reward).flatten()
                 ep_vector_reward += reward
                 
-                spec_obs = base_env.get_spec_obs()
                 time.sleep(RENDER_DELAY)
                 done = terminated[0] or truncated[0]
                 if done:
