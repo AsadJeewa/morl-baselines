@@ -4,9 +4,8 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics, SingleRewardWrapper
 from cleanrl.moppo_decomp import Agent
 import gymnasium as gym
 import numpy as np
-from cleanrl_utils.utils import get_base_env
+from cleanrl_utils import get_base_env, make_env
 from tqdm import tqdm
-from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 # --- Load checkpoint ---
 # checkpoint_path = "checkpoint/four-room-test/checkpoint_2480.pt"  # adjust path
 # checkpoint_path = "../cleanrl/model/shapes-grid/fin_moppo_env__shapes-grid-v0__moppo_decomp__1__1760003876/checkpoint_2160.pt"  # adjust path
@@ -21,28 +20,10 @@ checkpoint_path = "../cleanrl/model/shapes-grid/SAVE/cnn_low_level_easy__shapes-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load(checkpoint_path, map_location=device)
 
-# --- Environment factory ---
-def make_env(env_id, obj_idx=0, render=False, seed=None, difficulty=""):
-    def thunk():
-        extra_kwargs = {}
-        if difficulty:
-            extra_kwargs["difficulty"] = DIFFICULTY[difficulty.upper()]
-        if render:
-            env = mo_gym.make(env_id, render_mode="human", **extra_kwargs)
-        else:
-            env = mo_gym.make(env_id, **extra_kwargs)
-        env = MORecordEpisodeStatistics(env, gamma=0.98)
-        env = SingleRewardWrapper(env, obj_idx)
-        if seed is not None:
-            env.reset(seed=seed)
-        return env
-
-    return thunk
-
 idx = 0
 env_id = "shapes-grid-v0"
 difficulty="easy"
-env = gym.vector.SyncVectorEnv([make_env(env_id, idx, difficulty=difficulty)]) #expect list of callable of gym env
+env = gym.vector.SyncVectorEnv([make_env(env_id,idx=idx, difficulty=difficulty)]) #expect list of callable of gym env
 
 # --- Create agent and load weights ---
 agent = Agent(env)
@@ -57,7 +38,7 @@ num_seeds = 3
 episodes_per_seed = 500
 all_rewards = []
 for seed in tqdm(range(num_seeds)):
-    env = gym.vector.SyncVectorEnv([make_env(env_id,idx,render=True,seed=seed,difficulty=difficulty) for _ in range(1)])  # single env
+    env = gym.vector.SyncVectorEnv([make_env(env_id,idx=idx,seed=seed,difficulty=difficulty,render=True) for _ in range(1)])  # single env
     base_env = get_base_env(env.envs[0])
     base_env.set_specialisation(idx+1)
     for ep in tqdm(range(episodes_per_seed)):
