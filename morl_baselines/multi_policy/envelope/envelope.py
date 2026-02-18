@@ -20,6 +20,7 @@ from morl_baselines.common.evaluation import (
 from morl_baselines.common.morl_algorithm import MOAgent, MOPolicy
 from morl_baselines.common.networks import (
     NatureCNN,
+    CNNTorso,
     get_grad_norm,
     layer_init,
     mlp,
@@ -50,8 +51,8 @@ class QNet(nn.Module):
             self.feature_extractor = None
             input_dim = obs_shape[0] + rew_dim
         elif len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=512)
-            input_dim = self.feature_extractor.features_dim + rew_dim
+            self.feature_extractor = CNNTorso(self.obs_shape, output_dim=128)
+            input_dim = self.feature_extractor.output_dim + rew_dim
         # |S| + |R| -> ... -> |A| * |R|
         self.net = mlp(input_dim, action_dim * rew_dim, net_arch)
         self.apply(layer_init)
@@ -405,6 +406,8 @@ class Envelope(MOPolicy, MOAgent):
 
         Returns: the action with the highest Q-value.
         """
+        if obs.dim() == 3:          # [batch, H, W]
+            obs = obs.unsqueeze(0)
         q_values = self.q_net(obs, w)
         scalarized_q_values = th.einsum("r,bar->ba", w, q_values)
         max_act = th.argmax(scalarized_q_values, dim=1)
@@ -542,7 +545,10 @@ class Envelope(MOPolicy, MOAgent):
             if self.global_step < self.learning_starts:
                 action = self.env.action_space.sample()
             else:
-                action = self.act(th.as_tensor(obs).float().to(self.device), tensor_w)
+                tens_obs = th.as_tensor(obs).float().to(self.device)
+                if tens_obs.dim() == 3:          # [batch, H, W]
+                    tens_obs = tens_obs.unsqueeze(0)
+                action = self.act(tens_obs, tensor_w)
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
