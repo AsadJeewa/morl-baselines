@@ -3,11 +3,13 @@ import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 
 from morl_baselines.multi_policy.envelope.envelope import Envelope
-
+from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
 def main():
     def make_env():
-        env = mo_gym.make("shapes-grid-v0")
+        extra_kwargs = {}
+        extra_kwargs["difficulty"] = DIFFICULTY["EASY"]
+        env = mo_gym.make("shapes-grid-v0", **extra_kwargs)
         env = MORecordEpisodeStatistics(env, gamma=0.98)
         # env = mo_gym.LinearReward(env)
         return env
@@ -41,14 +43,14 @@ def main():
     )
 
     agent.train(
-        total_timesteps=100000,
+        total_timesteps=10000,
         total_episodes=None,
         weight=None,
         eval_env=eval_env,
-        ref_point=np.array([0, 0, -200.0]),
+        ref_point=np.array([-0.1, -0.1, -0.1]),
         known_pareto_front=None,
         num_eval_weights_for_front=100,
-        eval_freq=1000,
+        eval_freq=100,
         reset_num_timesteps=False,
         reset_learning_starts=False,
     )
