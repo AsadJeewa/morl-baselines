@@ -21,8 +21,8 @@ def main():
         max_grad_norm=1.0,#0.1 CHECK WAS TOO LOW
         learning_rate=2e-4,# 3e-4 CHECK WAS LOW 
         gamma=0.98,
-        batch_size=64,
-        net_arch=[128, 128],
+        batch_size=32,
+        net_arch=[256, 256, 256],
         buffer_size=int(1.5e6),
         initial_epsilon=0.8,
         final_epsilon=0.5,
