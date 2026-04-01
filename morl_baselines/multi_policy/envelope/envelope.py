@@ -146,6 +146,7 @@ class Envelope(MOPolicy, MOAgent):
             experiment_name: The name of the experiment, for wandb logging.
             wandb_entity: The entity of the project, for wandb logging.
             log: Whether to log to wandb.
+            wandb_mode (str): The mode for Weights & Biases logging, either "online", "offline", or "disabled".
             seed: The seed for the random number generator.
             device: The device to use for training.
             group: The wandb group to use for logging.
