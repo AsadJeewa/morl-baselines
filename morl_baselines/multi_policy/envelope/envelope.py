@@ -1,7 +1,7 @@
 """Envelope Q-Learning implementation."""
 
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 from typing_extensions import override
 
 import gymnasium as gym
@@ -113,6 +113,7 @@ class Envelope(MOPolicy, MOAgent):
         experiment_name: str = "Envelope",
         wandb_entity: Optional[str] = None,
         log: bool = True,
+        wandb_mode: Literal["online", "offline", "disabled"] = "online",
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         group: Optional[str] = None,
@@ -201,7 +202,7 @@ class Envelope(MOPolicy, MOAgent):
 
         self.log = log
         if log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, group, wandb_mode)
 
     @override
     def get_config(self):
