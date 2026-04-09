@@ -482,13 +482,16 @@ class Envelope(MOPolicy, MOAgent):
         eval_env: Optional[gym.Env] = None,
         ref_point: Optional[np.ndarray] = None,
         known_pareto_front: Optional[List[np.ndarray]] = None,
-        weight: Optional[np.ndarray] = None,
+        weight_list: Optional[np.ndarray] = None,
         total_episodes: Optional[int] = None,
         reset_num_timesteps: bool = True,
         eval_freq: int = 10000,
         num_eval_weights_for_front: int = 100,
         num_eval_episodes_for_front: int = 5,
         num_eval_weights_for_eval: int = 50,
+        eval_weights: Optional[np.ndarray] = None,
+        checkpoints: bool = False,
+        save_freq: int = 10000,
         reset_learning_starts: bool = False,
         verbose: bool = False,
     ):
@@ -499,13 +502,16 @@ class Envelope(MOPolicy, MOAgent):
             eval_env: environment to use for evaluation. If None, it is ignored.
             ref_point: reference point for the hypervolume computation.
             known_pareto_front: known pareto front for the hypervolume computation.
-            weight: weight vector. If None, it is randomly sampled every episode (as done in the paper).
+            weight_list: list of weight vectors. If None, it is randomly sampled every episode (as done in the paper).
             total_episodes: total number of episodes to train for. If None, it is ignored.
             reset_num_timesteps: whether to reset the number of timesteps. Useful when training multiple times.
-            eval_freq: policy evaluation frequency (in number of steps).
+            eval_freq: policy evaluation frequency (in number of steps).            
             num_eval_weights_for_front: number of weights to sample for creating the pareto front when evaluating.
             num_eval_episodes_for_front: number of episodes to run when evaluating the policy.
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
+            eval_weights (np.ndarray): Weights to use when evaluating the Pareto front, e.g., for computing expected utility.
+            checkpoints (bool): Whether to save checkpoints.
+            save_freq (int): Number of timesteps between checkpoints.
             reset_learning_starts: whether to reset the learning starts. Useful when training multiple times.
             verbose: whether to print the episode info.
         """
@@ -517,13 +523,14 @@ class Envelope(MOPolicy, MOAgent):
                     "total_timesteps": total_timesteps,
                     "ref_point": ref_point.tolist() if ref_point is not None else None,
                     "known_front": known_pareto_front,
-                    "weight": weight.tolist() if weight is not None else None,
+                    "weight_list": weight_list if weight_list is not None else None,
                     "total_episodes": total_episodes,
                     "reset_num_timesteps": reset_num_timesteps,
                     "eval_freq": eval_freq,
                     "num_eval_weights_for_front": num_eval_weights_for_front,
                     "num_eval_episodes_for_front": num_eval_episodes_for_front,
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
+                    "eval_weights": eval_weights,
                     "reset_learning_starts": reset_learning_starts,
                 }
             )
@@ -534,10 +541,16 @@ class Envelope(MOPolicy, MOAgent):
             self.learning_starts = self.global_step
 
         num_episodes = 0
-        eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
+
+        if not eval_weights:
+            eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         obs, _ = self.env.reset()
 
-        w = weight if weight is not None else random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
+        if weight_list is not None:
+            current_weight_idx = 0
+            w = weight_list[current_weight_idx]
+        else:
+            w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
         tensor_w = th.tensor(w).float().to(self.device)
 
         for _ in range(1, total_timesteps + 1):
@@ -554,6 +567,7 @@ class Envelope(MOPolicy, MOAgent):
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
+            print(self.global_step, num_episodes)
 
             self.replay_buffer.add(obs, action, vec_reward, next_obs, terminated)
             if self.global_step >= self.learning_starts:
@@ -573,17 +587,26 @@ class Envelope(MOPolicy, MOAgent):
                     ref_front=known_pareto_front,
                 )
 
+            # Checkpoint
+            if checkpoints and self.global_step % save_freq == 0:
+                self.save(filename=f"Envelope step={self.global_step}", save_replay_buffer=False)
+                print(f"Checkpoint saved at step {self.global_step}")
+
             if terminated or truncated:
                 obs, _ = self.env.reset()
                 num_episodes += 1
                 self.num_episodes += 1
+                # Cycle through train weights instead of sampling randomly
 
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
 
-                if weight is None:
+                if weight_list is not None:
+                    current_weight_idx = (current_weight_idx + 1) % len(weight_list)
+                    w = weight_list[current_weight_idx]
+                else:
                     w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
-                    tensor_w = th.tensor(w).float().to(self.device)
 
+                tensor_w = th.tensor(w).float().to(self.device)
             else:
                 obs = next_obs
