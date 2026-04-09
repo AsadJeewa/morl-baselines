@@ -567,7 +567,6 @@ class Envelope(MOPolicy, MOAgent):
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
-            print(self.global_step, num_episodes)
 
             self.replay_buffer.add(obs, action, vec_reward, next_obs, terminated)
             if self.global_step >= self.learning_starts:
