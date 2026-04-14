@@ -3,7 +3,7 @@
 import os
 import random
 from itertools import chain
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -126,6 +126,7 @@ class GPIPD(MOPolicy, MOAgent):
         experiment_name: str = "GPI-PD",
         wandb_entity: Optional[str] = None,
         log: bool = True,
+        wandb_mode: Literal["online", "offline", "disabled"] = "online",
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
     ):
@@ -171,6 +172,7 @@ class GPIPD(MOPolicy, MOAgent):
             experiment_name: The name of the experiment.
             wandb_entity: The name of the wandb entity.
             log: Whether to log.
+            wandb_mode (str): The mode for Weights & Biases logging, either "online", "offline", or "disabled".
             seed: The seed for random number generators.
             device: The device to use.
         """
@@ -271,7 +273,7 @@ class GPIPD(MOPolicy, MOAgent):
         # logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_mode)
 
     def get_config(self):
         """Return the configuration of the agent."""

@@ -3,7 +3,7 @@ import mo_gymnasium as mo_gym
 import numpy as np
 
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
-
+from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 
 # from gymnasium.wrappers.record_video import RecordVideo
 
@@ -11,7 +11,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 def main(algo: str, gpi_pd: bool, g: int, timesteps_per_iter: int = 10000, seed: int = 0):
     def make_env():
         env = mo_gym.make("minecart-v0")
-        env = mo_gym.MORecordEpisodeStatistics(env, gamma=0.98)
+        env = MORecordEpisodeStatistics(env, gamma=0.98)
         return env
 
     env = make_env()
@@ -25,10 +25,10 @@ def main(algo: str, gpi_pd: bool, g: int, timesteps_per_iter: int = 10000, seed:
         gamma=0.98,
         batch_size=128,
         net_arch=[256, 256, 256, 256],
-        buffer_size=int(2e5),
+        buffer_size=int(1e6),
         initial_epsilon=1.0,
         final_epsilon=0.05,
-        epsilon_decay_steps=50000,
+        epsilon_decay_steps=200000,
         learning_starts=100,
         alpha_per=0.6,
         min_priority=0.01,
@@ -49,6 +49,7 @@ def main(algo: str, gpi_pd: bool, g: int, timesteps_per_iter: int = 10000, seed:
         dynamics_rollout_len=1,
         real_ratio=0.5,
         log=True,
+        wandb_mode="offline",
         project_name="MORL-Baselines",
         experiment_name="GPI-PD",
     )
@@ -58,8 +59,9 @@ def main(algo: str, gpi_pd: bool, g: int, timesteps_per_iter: int = 10000, seed:
         eval_env=eval_env,
         ref_point=np.array([0.0, 0.0, -200.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),
-        weight_selection_algo=algo,
+        weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,
+        checkpoints=True,
     )
 
 
