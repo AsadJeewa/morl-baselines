@@ -1,3 +1,4 @@
+import fire
 import mo_gymnasium as mo_gym
 import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
@@ -5,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main():
+def main(total_timesteps: int, wandb_mode: str = "offline", seed: int = 0):
     def make_env():
         env = mo_gym.make("minecart-v0")
         env = MORecordEpisodeStatistics(env, gamma=0.98)
@@ -37,6 +38,7 @@ def main():
 
     agent = Envelope(
         env,
+        seed=seed,
         max_grad_norm=1.0,#0.1 CHECK WAS TOO LOW
         learning_rate=2e-4,# 3e-4 CHECK WAS LOW 
         gamma=0.98,
@@ -55,13 +57,13 @@ def main():
         target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
         tau=0.1,
         log=True,
-        wandb_mode="offline",
+        wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope",
     )
 
     agent.train(
-        total_timesteps=500000,
+        total_timesteps=total_timesteps,
         total_episodes=None,
         weight_list=None,
         eval_env=eval_env,
@@ -78,4 +80,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    fire.Fire(main)

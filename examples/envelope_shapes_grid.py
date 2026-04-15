@@ -1,3 +1,4 @@
+import fire
 import mo_gymnasium as mo_gym
 import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
@@ -5,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
-def main():
+def main(total_timesteps: int, wandb_mode: str = "offline", seed: int = 0):
     def make_env():
         extra_kwargs = {}
         extra_kwargs["difficulty"] = DIFFICULTY["EASY"]
@@ -20,6 +21,7 @@ def main():
 
     agent = Envelope(
         env,
+        seed=seed,
         max_grad_norm=0.1,
         learning_rate=3e-4,
         gamma=0.98,
@@ -38,13 +40,13 @@ def main():
         target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
         tau=0.1,
         log=True,
-        wandb_mode="offline",
+        wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope",
     )
 
     agent.train(
-        total_timesteps=100000,
+        total_timesteps=total_timesteps,
         total_episodes=None,
         weight_list=None,
         eval_weights=None,
@@ -61,4 +63,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    fire.Fire(main)
