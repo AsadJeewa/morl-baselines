@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(total_timesteps: int, wandb_mode: str = "offline", seed: int = 0):
+def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
     def make_env():
         env = mo_gym.make("minecart-v0")
         env = MORecordEpisodeStatistics(env, gamma=0.98)
