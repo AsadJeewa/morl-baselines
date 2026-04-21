@@ -51,7 +51,7 @@ def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
         weight_list=None,
         eval_weights=None,
         eval_env=eval_env,
-        ref_point=np.array([-0.1, -0.1, -0.1]),
+        ref_point=np.array([-5.0, -5.0, -5.0]),
         known_pareto_front=None,
         num_eval_weights_for_front=10,#KEY FOR SPEED
         eval_freq=1000,
