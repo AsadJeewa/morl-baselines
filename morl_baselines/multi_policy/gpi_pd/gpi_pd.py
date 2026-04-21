@@ -26,6 +26,7 @@ from morl_baselines.common.model_based.utils import ModelEnv, visualize_eval
 from morl_baselines.common.morl_algorithm import MOAgent, MOPolicy
 from morl_baselines.common.networks import (
     NatureCNN,
+    CNNTorso,
     get_grad_norm,
     huber,
     layer_init,
@@ -61,20 +62,30 @@ class QNet(nn.Module):
         if len(obs_shape) == 1:
             self.state_features = mlp(obs_shape[0], -1, net_arch[:1])
         elif len(obs_shape) > 1:  # Image observation
-            self.state_features = NatureCNN(self.obs_shape, features_dim=net_arch[0])
+            # self.state_features = NatureCNN(self.obs_shape, features_dim=net_arch[0])
+            self.state_features = CNNTorso(self.obs_shape, output_dim=net_arch[0])
         self.net = mlp(
-            net_arch[0], action_dim * rew_dim, net_arch[1:], drop_rate=drop_rate, layer_norm=layer_norm
+            net_arch[0], action_dim * rew_dim, net_arch[1:], drop_rate=drop_rate, layer_norm=layer_norm#*2
         )  # 128/128 256 256 256
 
         self.apply(layer_init)
 
     def forward(self, obs, w):
         """Forward pass."""
+        if obs.dim() == 5:
+            B, K, C, H, W = obs.shape
+            obs = obs.reshape(B * K, C, H, W)
+            w = w.reshape(B * K, -1)
+        else:
+            B, K = None, None
         sf = self.state_features(obs)
         wf = self.weights_features(w)
         q_values = self.net(sf * wf)
-        return q_values.view(-1, self.action_dim, self.phi_dim)  # Batch size X Actions X Rewards
-
+        if K is not None:
+            q_values = q_values.view(B, K, self.action_dim, self.phi_dim)
+        else:
+            q_values = q_values.view(-1, self.action_dim, self.phi_dim)
+        return q_values
 
 class GPIPD(MOPolicy, MOAgent):
     """GPI-PD Algorithm.
@@ -245,10 +256,14 @@ class GPIPD(MOPolicy, MOAgent):
         self.dynamics_net_arch = dynamics_net_arch
         self.dynamics = None
         self.dynamics_buffer = None
+        if len(self.observation_shape) > 1:
+            obs_dim = np.prod(self.observation_shape)
+        else:
+            obs_dim = self.observation_dim
         if self.dyna:
             self.dynamics = ProbabilisticEnsemble(
-                input_dim=self.observation_dim + self.action_dim,
-                output_dim=self.observation_dim + self.reward_dim,
+                input_dim=obs_dim + self.action_dim,
+                output_dim=obs_dim + self.reward_dim,
                 arch=self.dynamics_net_arch,
                 normalize_inputs=dynamics_normalize_inputs,
                 ensemble_size=dynamics_ensemble_size,
@@ -451,6 +466,7 @@ class GPIPD(MOPolicy, MOAgent):
                 # Compute min_i Q_i(s', a, w) . w
                 next_q_values = th.stack([target_psi_net(s_next_obs, w) for target_psi_net in self.target_q_nets])
                 scalarized_next_q_values = th.einsum("nbar,br->nba", next_q_values, w)  # q_i(s', a, w)
+                # scalarized_next_q_values = th.einsum("nbkar,br->nbka", next_q_values, w)  # q_i(s', a, w)
                 min_inds = th.argmin(scalarized_next_q_values, dim=0)
                 min_inds = min_inds.reshape(1, next_q_values.size(1), next_q_values.size(2), 1).expand(
                     1, next_q_values.size(1), next_q_values.size(2), next_q_values.size(3)
@@ -667,7 +683,10 @@ class GPIPD(MOPolicy, MOAgent):
     @th.no_grad()
     def _envelope_target(self, obs: th.Tensor, w: th.Tensor, sampled_w: th.Tensor):
         W = sampled_w.unsqueeze(0).repeat(obs.size(0), 1, 1)
-        next_obs = obs.unsqueeze(1).repeat(1, sampled_w.size(0), 1)
+        if obs.dim() > 3:
+            next_obs = obs.unsqueeze(1).repeat(1, sampled_w.size(0), 1,1,1)
+        else:
+            next_obs = obs.unsqueeze(1).repeat(1, sampled_w.size(0), 1)
 
         next_q_target = th.stack(
             [
@@ -754,9 +773,14 @@ class GPIPD(MOPolicy, MOAgent):
                         m_obs, m_actions, m_rewards, m_next_obs, m_dones = self.replay_buffer.get_all_data()
                         one_hot = np.zeros((len(m_obs), self.action_dim))
                         one_hot[np.arange(len(m_obs)), m_actions.astype(int).reshape(len(m_obs))] = 1
+                        # ensure obs is 2D no matter what (CNN or flat)
+                        if m_obs.ndim > 2:
+                            m_obs = m_obs.reshape(m_obs.shape[0], -1)
+                            m_next_obs = m_next_obs.reshape(m_next_obs.shape[0], -1)
+                        one_hot = one_hot.reshape(one_hot.shape[0], -1)
                         X = np.hstack((m_obs, one_hot))
                         Y = np.hstack((m_rewards, m_next_obs - m_obs))
-                        mean_holdout_loss = self.dynamics.fit(X, Y)
+                        mean_holdout_loss = self.dynamics.fit(X, Y) #TODO fix for CNN obs
                         if self.log:
                             wandb.log(
                                 {"dynamics/mean_holdout_loss": mean_holdout_loss, "global_step": self.global_step},
