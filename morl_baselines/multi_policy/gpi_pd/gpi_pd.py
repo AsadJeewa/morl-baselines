@@ -869,6 +869,7 @@ class GPIPD(MOPolicy, MOAgent):
 
         eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
 
+        last_mo_eval = 0
         for iter in range(1, max_iter + 1):
             if weight_selection_algo == "ols" or weight_selection_algo == "gpi-ls":
                 if weight_selection_algo == "gpi-ls":
@@ -915,7 +916,8 @@ class GPIPD(MOPolicy, MOAgent):
                     n_value = policy_evaluation_mo(self, eval_env, wcw, rep=num_eval_episodes_for_front)[3]
                     linear_support.add_solution(n_value, wcw)
 
-            if self.log and self.global_step % eval_mo_freq == 0:
+            if self.log and (self.global_step - last_mo_eval) >= eval_mo_freq:
+                last_mo_eval = self.global_step
                 # Evaluation
                 gpi_returns_test_tasks = [
                     policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights

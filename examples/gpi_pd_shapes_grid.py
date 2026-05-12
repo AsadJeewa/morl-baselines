@@ -9,7 +9,7 @@ from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 # from gymnasium.wrappers.record_video import RecordVideo
 
 
-def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", timesteps_per_iter: int = 10000, seed: int = 0):
+def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0):
     gpi_pd = str(gpi_pd).lower() == "true" #TODO add argparse
     def make_env():
         extra_kwargs = {}
@@ -63,7 +63,7 @@ def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", timesteps_
     )
 
     agent.train(
-        total_timesteps=15 * timesteps_per_iter,
+        total_timesteps=total_timesteps,
         eval_env=eval_env,
         ref_point=np.array([-5.0, -5.0, -5.0]),
         known_pareto_front=None,
