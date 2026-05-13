@@ -6,7 +6,8 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
-def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
+def main(total_timesteps: int, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+    log = str(log).lower() == "true" 
     def make_env():
         extra_kwargs = {}
         extra_kwargs["difficulty"] = DIFFICULTY["EASY"]
@@ -39,7 +40,7 @@ def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
         gradient_updates=1,
         target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
         tau=0.1,
-        log=True,
+        log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope",

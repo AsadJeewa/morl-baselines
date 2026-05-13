@@ -6,7 +6,8 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
+def main(total_timesteps: int, wandb_mode: str = "online",log: bool = True, seed: int = 0):
+    log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("minecart-v0")
         env = MORecordEpisodeStatistics(env, gamma=0.98)
@@ -56,7 +57,7 @@ def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
         gradient_updates=5,
         target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
         tau=0.1,
-        log=True,
+        log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope",
@@ -70,7 +71,7 @@ def main(total_timesteps: int, wandb_mode: str = "online", seed: int = 0):
         ref_point=np.array([-1, -1, -200.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),
         eval_weights = None,
-        # num_eval_weights_for_front=100,
+        num_eval_weights_for_front=100,
         eval_freq=1000,
         # reset_num_timesteps=False,
         # reset_learning_starts=False,
