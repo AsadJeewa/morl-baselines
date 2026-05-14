@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(experiment: str = "interEasy", total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+def main(experiment: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
@@ -17,19 +17,23 @@ def main(experiment: str = "interEasy", total_timesteps: int = 100000, wandb_mod
     env = make_env()
     eval_env = make_env()
     dim = env.reward_dim
-    
-    if experiment == "interEasy":
-        train_weights = equally_spaced_weights(dim=dim, n=20)
-        eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif experiment == "interMedium":
-        train_weights = equally_spaced_weights(dim=dim, n=10)
-        eval_weights = equally_spaced_weights(dim=dim, n=100)
+    if experiment is not None:
+        if experiment == "interEasy":
+            train_weights = equally_spaced_weights(dim=dim, n=20)
+            eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif experiment == "interDifficult":
-        train_weights = equally_spaced_weights(dim=dim, n=5)
-        eval_weights = equally_spaced_weights(dim=dim, n=100)
-    
+        elif experiment == "interMedium":
+            train_weights = equally_spaced_weights(dim=dim, n=10)
+            eval_weights = equally_spaced_weights(dim=dim, n=100)
+
+        elif experiment == "interDifficult":
+            train_weights = equally_spaced_weights(dim=dim, n=5)
+            eval_weights = equally_spaced_weights(dim=dim, n=100)
+    else:
+        train_weights=None
+        eval_weights = None
+
     agent = Envelope(
         env,
         seed=seed,
