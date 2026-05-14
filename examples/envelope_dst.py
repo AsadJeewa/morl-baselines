@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+def main(experiment: str = "interEasy", total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
@@ -16,6 +16,19 @@ def main(total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = 
 
     env = make_env()
     eval_env = make_env()
+    dim = env.reward_dim
+    
+    if experiment == "interEasy":
+        train_weights = equally_spaced_weights(dim=dim, n=20)
+        eval_weights = equally_spaced_weights(dim=dim, n=100)
+
+    elif experiment == "interMedium":
+        train_weights = equally_spaced_weights(dim=dim, n=10)
+        eval_weights = equally_spaced_weights(dim=dim, n=100)
+
+    elif experiment == "interDifficult":
+        train_weights = equally_spaced_weights(dim=dim, n=5)
+        eval_weights = equally_spaced_weights(dim=dim, n=100)
     
     agent = Envelope(
         env,
@@ -46,14 +59,13 @@ def main(total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = 
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
-        weight_list=None,
+        weight_list=train_weights,
         eval_env=eval_env,
         ref_point=np.array([0.0, -50.0]),
-        known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),
-        eval_weights = None,
+        known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
+        eval_weights = eval_weights,
         num_eval_weights_for_front=50,
         eval_freq=1000,
-        num_episodes_eval=1,
         reset_num_timesteps=True,
         reset_learning_starts=False,
         checkpoints=True,
