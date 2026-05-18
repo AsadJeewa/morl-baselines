@@ -117,6 +117,7 @@ class Envelope(MOPolicy, MOAgent):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         group: Optional[str] = None,
+        argmax: bool = True,
     ):
         """Envelope Q-learning algorithm.
 
@@ -150,6 +151,7 @@ class Envelope(MOPolicy, MOAgent):
             seed: The seed for the random number generator.
             device: The device to use for training.
             group: The wandb group to use for logging.
+            argmax: Whether to use argmax or sampling for selecting the envelope weights.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
@@ -172,6 +174,7 @@ class Envelope(MOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
+        self.argmax = argmax
 
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -437,7 +440,10 @@ class Envelope(MOPolicy, MOAgent):
         # Max Q values for each sampled weight
         max_q, ac = th.max(scalarized_next_q_values, dim=2)
         # Max weights in the envelope
-        pref = th.argmax(max_q, dim=1)
+        if self.argmax:
+            pref = th.argmax(max_q, dim=1)
+        else:
+            pref = th.multinomial(F.softmax(max_q / 0.5, dim=1),num_samples=1).squeeze(1)
 
         # MO Q-values evaluated on the target network
         next_q_values_target = self.target_q_net(next_obs, W).view(
