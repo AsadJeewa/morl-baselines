@@ -2,10 +2,8 @@ import fire
 import mo_gymnasium as mo_gym
 import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
-#from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
 from morl_baselines.multi_policy.envelope.envelope import Envelope
-from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
-
+from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
     log = str(log).lower() == "true" 
     def make_env():
@@ -20,16 +18,11 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
 
     if experiment_type is not None:
         if experiment_type == "interEasy":
-            train_weights = equally_spaced_weights(dim=dim, n=20)
-            eval_weights = equally_spaced_weights(dim=dim, n=100)
-
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=20, n_eval=100,seed=seed)
         elif experiment_type == "interMedium":
-            train_weights = equally_spaced_weights(dim=dim, n=10)
-            eval_weights = equally_spaced_weights(dim=dim, n=100)
-
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
         elif experiment_type == "interDifficult":
-            train_weights = equally_spaced_weights(dim=dim, n=5)
-            eval_weights = equally_spaced_weights(dim=dim, n=100)
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed    )
     else:
         train_weights=None
         eval_weights = None
@@ -44,11 +37,11 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         net_arch=[128,128],
         buffer_size=int(1e5),
         initial_epsilon=1.0,
-        final_epsilon=0.1,
+        final_epsilon=0.2,
         epsilon_decay_steps=80000,
-        initial_homotopy_lambda=0.5,
-        final_homotopy_lambda=1.0,
-        homotopy_decay_steps=10000,
+        initial_homotopy_lambda=0.2,
+        final_homotopy_lambda=0.2,
+        homotopy_decay_steps=total_timesteps,
         learning_starts=5000,
         envelope=True,
         gradient_updates=2,
