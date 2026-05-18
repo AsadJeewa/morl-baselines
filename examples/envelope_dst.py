@@ -38,7 +38,7 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         buffer_size=int(1e5),
         initial_epsilon=1.0,
         final_epsilon=0.2,
-        epsilon_decay_steps=80000,
+        epsilon_decay_steps=total_timesteps*0.8,
         initial_homotopy_lambda=0.2,
         final_homotopy_lambda=0.2,
         homotopy_decay_steps=total_timesteps,
