@@ -57,7 +57,7 @@ def extrema_weights(dim: int) -> List[np.ndarray]:
     """
     return list(np.eye(dim, dtype=np.float32))
 
-def equally_spaced_train_and_eval_weights(dim: int, n_train: int, n_eval: int, seed: int = 42):
+def equally_spaced_train_and_eval_weights(dim: int, n_train: int, n_eval: int, seed: int = 42) -> tuple[List[np.ndarray], List[np.ndarray]]:
         train_weights = equally_spaced_weights(dim=dim, n=n_train, seed=seed)
         eval_weights = equally_spaced_weights(dim=dim, n=n_eval, seed=seed)
         return train_weights, eval_weights
