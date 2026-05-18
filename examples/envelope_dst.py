@@ -57,7 +57,7 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_type="Envelope-DST",
+        experiment_name="Envelope-DST",
     )
 
     agent.train(
