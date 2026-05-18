@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(experiment: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
@@ -18,16 +18,16 @@ def main(experiment: str = None, total_timesteps: int = 100000, wandb_mode: str 
     eval_env = make_env()
     dim = env.reward_dim
 
-    if experiment is not None:
-        if experiment == "interEasy":
+    if experiment_type is not None:
+        if experiment_type == "interEasy":
             train_weights = equally_spaced_weights(dim=dim, n=20)
             eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-        elif experiment == "interMedium":
+        elif experiment_type == "interMedium":
             train_weights = equally_spaced_weights(dim=dim, n=10)
             eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-        elif experiment == "interDifficult":
+        elif experiment_type == "interDifficult":
             train_weights = equally_spaced_weights(dim=dim, n=5)
             eval_weights = equally_spaced_weights(dim=dim, n=100)
     else:
@@ -40,24 +40,24 @@ def main(experiment: str = None, total_timesteps: int = 100000, wandb_mode: str 
         max_grad_norm=1.0,
         learning_rate=3e-4,
         gamma=0.99,
-        batch_size=128,
+        batch_size=256,
         net_arch=[128,128],
         buffer_size=int(1e5),
         initial_epsilon=1.0,
-        final_epsilon=0.05,
-        epsilon_decay_steps=20000,
-        initial_homotopy_lambda=0.0,
+        final_epsilon=0.1,
+        epsilon_decay_steps=80000,
+        initial_homotopy_lambda=0.5,
         final_homotopy_lambda=1.0,
-        homotopy_decay_steps=50000,
-        learning_starts=1000,
+        homotopy_decay_steps=10000,
+        learning_starts=5000,
         envelope=True,
-        gradient_updates=1,
+        gradient_updates=2,
         target_net_update_freq=200, 
-        tau=1.0,
+        tau=0.01,
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope-DST",
+        experiment_type_name="Envelope-DST",
     )
 
     agent.train(
