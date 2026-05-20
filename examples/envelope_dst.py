@@ -22,7 +22,7 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         elif experiment_type == "interMedium":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
         elif experiment_type == "interDifficult":
-            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed    )
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
     else:
         train_weights=None
         eval_weights = None
@@ -34,19 +34,19 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         learning_rate=3e-4,
         gamma=0.99,
         batch_size=256,
-        net_arch=[128,128],
-        buffer_size=int(1e5),
+        net_arch=[256,256],
+        buffer_size=int(5e4),
         initial_epsilon=1.0,
-        final_epsilon=0.2,
+        final_epsilon=0.01,
         epsilon_decay_steps=total_timesteps*0.8,
         initial_homotopy_lambda=0.2,
         final_homotopy_lambda=0.2,
         homotopy_decay_steps=total_timesteps,
-        learning_starts=5000,
+        learning_starts=1000,
         envelope=True,
         gradient_updates=2,
-        target_net_update_freq=200, 
-        tau=0.01,
+        target_net_update_freq=1000, 
+        tau=1,
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
