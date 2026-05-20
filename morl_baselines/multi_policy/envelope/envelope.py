@@ -529,7 +529,7 @@ class Envelope(MOPolicy, MOAgent):
                     "total_timesteps": total_timesteps,
                     "ref_point": ref_point.tolist() if ref_point is not None else None,
                     "known_front": known_pareto_front,
-                    "weight_list": weight_list if weight_list is not None else None,
+                    "weight_list": weight_list,
                     "total_episodes": total_episodes,
                     "reset_num_timesteps": reset_num_timesteps,
                     "eval_freq": eval_freq,
@@ -548,7 +548,7 @@ class Envelope(MOPolicy, MOAgent):
 
         num_episodes = 0
 
-        if not eval_weights:
+        if eval_weights is None:
             eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         obs, _ = self.env.reset()
 
