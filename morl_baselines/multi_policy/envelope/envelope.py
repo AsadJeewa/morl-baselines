@@ -117,8 +117,6 @@ class Envelope(MOPolicy, MOAgent):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         group: Optional[str] = None,
-        use_argmax_for_envelope: bool = True,
-        use_train_weights_for_envelope: bool = False,
     ):
         """Envelope Q-learning algorithm.
 
@@ -152,8 +150,6 @@ class Envelope(MOPolicy, MOAgent):
             seed: The seed for the random number generator.
             device: The device to use for training.
             group: The wandb group to use for logging.
-            use_argmax_for_envelope: Whether to use argmax or sampling for selecting the envelope weights.
-            use_train_weights_for_envelope: Whether to use training weights for the envelope.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
@@ -176,8 +172,6 @@ class Envelope(MOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
-        self.use_argmax_for_envelope = use_argmax_for_envelope
-        self.use_train_weights_for_envelope = use_train_weights_for_envelope
 
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -218,6 +212,7 @@ class Envelope(MOPolicy, MOAgent):
             "learning_rate": self.learning_rate,
             "initial_epsilon": self.initial_epsilon,
             "epsilon_decay_steps": self.epsilon_decay_steps,
+            "final_epsilon": self.final_epsilon,
             "batch_size": self.batch_size,
             "tau": self.tau,
             "clip_grand_norm": self.max_grad_norm,
@@ -227,6 +222,7 @@ class Envelope(MOPolicy, MOAgent):
             "num_sample_w": self.num_sample_w,
             "net_arch": self.net_arch,
             "per": self.per,
+            "per_alpha": self.per_alpha,
             "gradient_updates": self.gradient_updates,
             "buffer_size": self.buffer_size,
             "initial_homotopy_lambda": self.initial_homotopy_lambda,
@@ -299,9 +295,8 @@ class Envelope(MOPolicy, MOAgent):
                     self.num_sample_w,
                     replace=True,
                 )
-
                 sampled_w = (
-                    th.tensor(self.train_weights[idx])
+                    th.tensor(np.stack(self.train_weights)[idx])
                     .float()
                     .to(self.device)
                 )
@@ -511,6 +506,8 @@ class Envelope(MOPolicy, MOAgent):
         num_eval_episodes_for_front: int = 5,
         num_eval_weights_for_eval: int = 50,
         eval_weights: Optional[np.ndarray] = None,
+        use_argmax_for_envelope: bool = True,
+        use_train_weights_for_envelope: bool = False,
         checkpoints: bool = False,
         save_freq: int = 10000,
         reset_learning_starts: bool = False,
@@ -531,6 +528,8 @@ class Envelope(MOPolicy, MOAgent):
             num_eval_episodes_for_front: number of episodes to run when evaluating the policy.
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             eval_weights (np.ndarray): Weights to use when evaluating the Pareto front, e.g., for computing expected utility.
+            use_argmax_for_envelope: Whether to use argmax or sampling for selecting the envelope weights.
+            use_train_weights_for_envelope: Whether to use training weights for the envelope.
             checkpoints (bool): Whether to save checkpoints.
             save_freq (int): Number of timesteps between checkpoints.
             reset_learning_starts: whether to reset the learning starts. Useful when training multiple times.
@@ -553,6 +552,8 @@ class Envelope(MOPolicy, MOAgent):
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
                     "eval_weights": eval_weights,
                     "reset_learning_starts": reset_learning_starts,
+                    "use_argmax_for_envelope": use_argmax_for_envelope,
+                    "use_train_weights_for_envelope": use_train_weights_for_envelope,
                 }
             )
 
@@ -560,6 +561,11 @@ class Envelope(MOPolicy, MOAgent):
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
         if reset_learning_starts:  # Resets epsilon-greedy exploration
             self.learning_starts = self.global_step
+
+        self.train_weights = train_weights
+        self.eval_weights = eval_weights
+        self.use_argmax_for_envelope=use_argmax_for_envelope
+        self.use_train_weights_for_envelope=use_train_weights_for_envelope
 
         num_episodes = 0
 

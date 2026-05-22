@@ -17,17 +17,15 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
     eval_env = make_env()
     dim = env.reward_dim
 
+    train_weights=None
+    eval_weights = None
     if experiment_type is not None:
-        if experiment_type == "interEasy":
+        if experiment_type.lower() == "intereasy":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=20, n_eval=100,seed=seed)
-        elif experiment_type == "interMedium":
+        elif experiment_type.lower() == "intermedium":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
-        elif experiment_type == "interDifficult":
+        elif experiment_type.lower() == "interdifficult":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
-    else:
-        train_weights=None
-        eval_weights = None
-
     agent = Envelope(
         env,
         seed=seed,
@@ -52,14 +50,14 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope-DST",
-        use_argmax_for_envelope=use_argmax_for_envelope,
-        use_train_weights_for_envelope=use_train_weights_for_envelope,  
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
         train_weights=train_weights,
+        use_argmax_for_envelope=use_argmax_for_envelope,
+        use_train_weights_for_envelope=use_train_weights_for_envelope,  
         eval_env=eval_env,
         ref_point=np.array([0.0, -50.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
