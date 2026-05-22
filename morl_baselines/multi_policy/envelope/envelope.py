@@ -117,7 +117,8 @@ class Envelope(MOPolicy, MOAgent):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         group: Optional[str] = None,
-        argmax: bool = True,
+        use_argmax_for_envelope: bool = True,
+        use_train_weights_for_envelope: bool = False,
     ):
         """Envelope Q-learning algorithm.
 
@@ -151,7 +152,8 @@ class Envelope(MOPolicy, MOAgent):
             seed: The seed for the random number generator.
             device: The device to use for training.
             group: The wandb group to use for logging.
-            argmax: Whether to use argmax or sampling for selecting the envelope weights.
+            use_argmax_for_envelope: Whether to use argmax or sampling for selecting the envelope weights.
+            use_train_weights_for_envelope: Whether to use training weights for the envelope.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
@@ -174,7 +176,8 @@ class Envelope(MOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
-        self.argmax = argmax
+        self.use_argmax_for_envelope = use_argmax_for_envelope
+        self.use_train_weights_for_envelope = use_train_weights_for_envelope
 
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -290,12 +293,24 @@ class Envelope(MOPolicy, MOAgent):
                     b_next_obs,
                     b_dones,
                 ) = self.__sample_batch_experiences()
+            if self.use_train_weights_for_envelope and self.train_weights is not None:
+                idx = self.np_random.choice(
+                    len(self.train_weights),
+                    self.num_sample_w,
+                    replace=True,
+                )
 
-            sampled_w = (
-                th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist="gaussian", rng=self.np_random))
-                .float()
-                .to(self.device)
-            )  # sample num_sample_w random weights
+                sampled_w = (
+                    th.tensor(self.train_weights[idx])
+                    .float()
+                    .to(self.device)
+                )
+            else:
+                sampled_w = (
+                    th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist="gaussian", rng=self.np_random))
+                    .float()
+                    .to(self.device)
+                )  # sample num_sample_w random weights
             w = sampled_w.repeat_interleave(b_obs.size(0), 0)  # repeat the weights for each sample
             b_obs, b_actions, b_rewards, b_next_obs, b_dones = (
                 b_obs.repeat(self.num_sample_w, *(1 for _ in range(b_obs.dim() - 1))),
@@ -440,7 +455,7 @@ class Envelope(MOPolicy, MOAgent):
         # Max Q values for each sampled weight
         max_q, ac = th.max(scalarized_next_q_values, dim=2)
         # Max weights in the envelope
-        if self.argmax:
+        if self.use_argmax_for_envelope:
             pref = th.argmax(max_q, dim=1)
         else:
             pref = th.multinomial(F.softmax(max_q / 0.5, dim=1),num_samples=1).squeeze(1)
@@ -488,7 +503,7 @@ class Envelope(MOPolicy, MOAgent):
         eval_env: Optional[gym.Env] = None,
         ref_point: Optional[np.ndarray] = None,
         known_pareto_front: Optional[List[np.ndarray]] = None,
-        weight_list: Optional[np.ndarray] = None,
+        train_weights: Optional[np.ndarray] = None,
         total_episodes: Optional[int] = None,
         reset_num_timesteps: bool = True,
         eval_freq: int = 10000,
@@ -508,7 +523,7 @@ class Envelope(MOPolicy, MOAgent):
             eval_env: environment to use for evaluation. If None, it is ignored.
             ref_point: reference point for the hypervolume computation.
             known_pareto_front: known pareto front for the hypervolume computation.
-            weight_list: list of weight vectors. If None, it is randomly sampled every episode (as done in the paper).
+            train_weights: list of training weight vectors. If None, it is randomly sampled every episode (as done in the paper).
             total_episodes: total number of episodes to train for. If None, it is ignored.
             reset_num_timesteps: whether to reset the number of timesteps. Useful when training multiple times.
             eval_freq: policy evaluation frequency (in number of steps).            
@@ -529,7 +544,7 @@ class Envelope(MOPolicy, MOAgent):
                     "total_timesteps": total_timesteps,
                     "ref_point": ref_point.tolist() if ref_point is not None else None,
                     "known_front": known_pareto_front,
-                    "weight_list": weight_list,
+                    "train_weights": train_weights,
                     "total_episodes": total_episodes,
                     "reset_num_timesteps": reset_num_timesteps,
                     "eval_freq": eval_freq,
@@ -552,9 +567,9 @@ class Envelope(MOPolicy, MOAgent):
             eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         obs, _ = self.env.reset()
 
-        if weight_list is not None:
+        if train_weights is not None:
             current_weight_idx = 0
-            w = weight_list[current_weight_idx]
+            w = train_weights[current_weight_idx]
         else:
             w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
         tensor_w = th.tensor(w).float().to(self.device)
@@ -606,9 +621,9 @@ class Envelope(MOPolicy, MOAgent):
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
 
-                if weight_list is not None:
-                    current_weight_idx = (current_weight_idx + 1) % len(weight_list)
-                    w = weight_list[current_weight_idx]
+                if train_weights is not None:
+                    current_weight_idx = (current_weight_idx + 1) % len(train_weights)
+                    w = train_weights[current_weight_idx]
                 else:
                     w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
 

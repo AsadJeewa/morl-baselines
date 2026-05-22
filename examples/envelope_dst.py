@@ -4,7 +4,8 @@ import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
-def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+
+def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False):
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
@@ -51,13 +52,14 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
         experiment_name="Envelope-DST",
-        argmax=False,
+        use_argmax_for_envelope=use_argmax_for_envelope,
+        use_train_weights_for_envelope=use_train_weights_for_envelope,  
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
-        weight_list=train_weights,
+        train_weights=train_weights,
         eval_env=eval_env,
         ref_point=np.array([0.0, -50.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
