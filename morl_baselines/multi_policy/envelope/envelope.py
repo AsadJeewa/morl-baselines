@@ -47,12 +47,12 @@ class QNet(nn.Module):
         self.obs_shape = obs_shape
         self.action_dim = action_dim
         self.rew_dim = rew_dim
-        if len(obs_shape) == 1:
-            self.feature_extractor = None
-            input_dim = obs_shape[0] + rew_dim
-        elif len(obs_shape) > 1:  # Image observation
+        if len(obs_shape) == 3:  # Image observation
             self.feature_extractor = CNNTorso(self.obs_shape, output_dim=128)
             input_dim = self.feature_extractor.output_dim + rew_dim
+        else:  # Flat observation   
+            self.feature_extractor = None
+            input_dim = int(np.prod(obs_shape)) + rew_dim
         # |S| + |R| -> ... -> |A| * |R|
         self.net = mlp(input_dim, action_dim * rew_dim, net_arch)
         self.apply(layer_init)
