@@ -3,7 +3,7 @@
 import os
 import time
 from abc import ABC, abstractmethod
-from distutils.util import strtobool
+from morl_baselines.common.utils import strtobool
 from typing import Dict, Literal, Optional, Union
 
 import gymnasium as gym
@@ -309,7 +309,7 @@ class MOAgent(ABC):
         """
         self.experiment_name = experiment_name
         env_id = self.env.spec.id if not isinstance(self.env, MOSyncVectorEnv) else self.env.envs[0].spec.id
-        self.full_experiment_name = f"{env_id}__{experiment_name}__{self.seed}__{int(time.time())}"
+        self.full_experiment_name = f"{experiment_name}__{self.seed}__{int(time.time())}"
         import wandb
 
         config = self.get_config()

@@ -9,12 +9,12 @@ Examples:
 import argparse
 import os
 import subprocess
-from distutils.util import strtobool
+from morl_baselines.common.utils import strtobool
 
 import mo_gymnasium as mo_gym
 import numpy as np
 import requests
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+#from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from gymnasium.wrappers import FlattenObservation, RecordVideo
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 
