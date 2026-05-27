@@ -6,7 +6,21 @@ from typing import Callable, List
 
 import numpy as np
 
+def strtobool(val):
+    """Convert a string representation of truth to true (1) or false (0).
 
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
+    'val' is anything else.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value {!r}".format(val))
+    
 def linearly_decaying_value(initial_value, decay_period, step, warmup_steps, final_value):
     """Returns the current value for a linearly decaying parameter.
 
