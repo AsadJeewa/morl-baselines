@@ -8,7 +8,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 # from gymnasium.wrappers.record_video import RecordVideo
 
 
-def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0):
+def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
     gpi_pd = str(gpi_pd).lower() == "true"
     log = str(log).lower() == "true"
     def make_env():
@@ -31,30 +31,30 @@ def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", log: bool 
         buffer_size=int(1e6),
         initial_epsilon=1.0,
         final_epsilon=0.05,
-        epsilon_decay_steps=200000,
-        learning_starts=100,
+        epsilon_decay_steps=total_timesteps*0.6,
+        learning_starts=5000,
         alpha_per=0.6,
         min_priority=0.01,
         per=gpi_pd,
         gpi_pd=gpi_pd,
         use_gpi=True,
         gradient_updates=g,
-        target_net_update_freq=200,
+        target_net_update_freq=100,
         tau=1,
         dyna=gpi_pd,
         dynamics_uncertainty_threshold=1.5,
         dynamics_net_arch=[256, 256, 256],
         dynamics_buffer_size=int(1e5),
-        dynamics_rollout_batch_size=25000,
+        dynamics_rollout_batch_size=5000,
         dynamics_train_freq=lambda t: 250,
         dynamics_rollout_freq=250,
-        dynamics_rollout_starts=5000,
-        dynamics_rollout_len=1,
-        real_ratio=0.5,
+        dynamics_rollout_starts=10000,
+        dynamics_rollout_len=5,
+        real_ratio=0.8,
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI-PD",
+        experiment_name="GPI_Minecart"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
