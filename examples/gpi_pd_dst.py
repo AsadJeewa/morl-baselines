@@ -10,7 +10,7 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
     gpi_pd = str(gpi_pd).lower() == "true" 
     log = str(log).lower() == "true"
     def make_env():
-        env = mo_gym.make("deep-sea-treasure-v0"), 
+        env = mo_gym.make("deep-sea-treasure-v0")
         env = MORecordEpisodeStatistics(env, gamma=0.98)
         # env = mo_gym.LinearReward(env)
         return env
