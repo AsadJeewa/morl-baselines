@@ -8,8 +8,7 @@ from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
 # from gymnasium.wrappers.record_video import RecordVideo
 
-
-def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0):
+def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
     gpi_pd = str(gpi_pd).lower() == "true" 
     log = str(log).lower() == "true"
     def make_env():
@@ -60,7 +59,7 @@ def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", log: bool 
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI-PD",
+        experiment_name="GPI_ShapesGrid_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
@@ -71,6 +70,8 @@ def main(algo: str, gpi_pd: bool, g: int, wandb_mode: str = "online", log: bool 
         weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,
         checkpoints=True,
+        # eval_freq=1000,
+        save_freq=20000,
     )
 
 

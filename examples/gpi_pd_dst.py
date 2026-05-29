@@ -29,7 +29,7 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         learning_rate=3e-4,
         gamma=0.98,
         batch_size=128,
-        net_arch=[256, 256, 256, 256],
+        net_arch=[256, 256],
         buffer_size=int(1e6),
         initial_epsilon=1.0,
         final_epsilon=0.05,
@@ -45,7 +45,7 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         tau=1,
         dyna=gpi_pd,
         dynamics_uncertainty_threshold=1.5,
-        dynamics_net_arch=[256, 256, 256],
+        dynamics_net_arch=[256, 256],
         dynamics_buffer_size=int(1e5),
         dynamics_rollout_batch_size=25000,
         dynamics_train_freq=lambda t: 250,
@@ -56,18 +56,21 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI_DST"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name="GPI_DST_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         eval_env=eval_env,
-        ref_point=np.array([-5.0, -5.0, -5.0]),
-        known_pareto_front=None,
+        ref_point=np.array([0.0, -50.0]),
+        known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
         weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,
+        # eval_freq=1000,
         checkpoints=True,
+        save_freq=20000,
     )
+
 
 
 if __name__ == "__main__":
