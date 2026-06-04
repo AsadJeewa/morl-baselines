@@ -4,7 +4,7 @@ import numpy as np
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 #from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
 from morl_baselines.multi_policy.envelope.envelope import Envelope
-from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
+from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
 def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online",log: bool = True, seed: int = 0, exp_notes: str = ""):
     log = str(log).lower() == "true"    
@@ -19,21 +19,32 @@ def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "o
     env = make_env()
     eval_env = make_env()
     dim = env.reward_dim
-    if experiment_type == "sparse":
-        train_weights = random_weights(dim=dim, n=3, dist="dirichlet", seed=42)
-        eval_weights = equally_spaced_weights(dim=dim, n=100)
+   
+    train_weights=None
+    eval_weights = None
+    if experiment_type is not None:
+        if experiment_type.lower() == "intereasy":
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=20, n_eval=100,seed=seed)
+        elif experiment_type.lower() == "intermedium":
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
+        elif experiment_type.lower() == "interdifficult":
+            train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
+            
+    # if experiment_type == "sparse":
+    #     train_weights = random_weights(dim=dim, n=3, dist="dirichlet", seed=42)
+    #     eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif experiment_type == "interpolation":
-        train_weights = random_weights(dim=dim, n=5, dist="dirichlet", seed=42)
-        eval_weights = equally_spaced_weights(dim=dim, n=100)
+    # elif experiment_type == "interpolation":
+    #     train_weights = random_weights(dim=dim, n=5, dist="dirichlet", seed=42)
+    #     eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif experiment_type == "extrapolation":
-        train_weights = np.ones((1, dim)) / dim # central
-        eval_weights = extrema_weights(dim=dim)
+    # elif experiment_type == "extrapolation":
+    #     train_weights = np.ones((1, dim)) / dim # central
+    #     eval_weights = extrema_weights(dim=dim)
 
-    elif experiment_type == "dist_shift":
-        train_weights = random_weights(dim=dim, n=50, dist="gaussian", seed=42)
-        eval_weights = random_weights(dim=dim, n=100, dist="dirichlet", seed=123)
+    # elif experiment_type == "dist_shift":
+    #     train_weights = random_weights(dim=dim, n=50, dist="gaussian", seed=42)
+    #     eval_weights = random_weights(dim=dim, n=100, dist="dirichlet", seed=123)
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
 
     agent = Envelope(
