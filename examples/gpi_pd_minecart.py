@@ -54,7 +54,7 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI_Minecart"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name="GPI_Minecart_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(

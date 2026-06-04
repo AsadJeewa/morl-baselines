@@ -71,7 +71,6 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         timesteps_per_iter=timesteps_per_iter,
         checkpoints=True,
         # eval_freq=1000,
-        save_freq=20000,
     )
 
 

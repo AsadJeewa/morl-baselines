@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights
 
-def main(total_timesteps: int, wandb_mode: str = "online",log: bool = True, seed: int = 0):
+def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online",log: bool = True, seed: int = 0, exp_notes: str = ""):
     log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("minecart-v0")
@@ -14,25 +14,24 @@ def main(total_timesteps: int, wandb_mode: str = "online",log: bool = True, seed
         # env = MOSyncVectorEnv(env)
         return env
 
-    EXPERIMENT = "sparse"  
-    # options: "sparse", "interpolation", "extrapolation", "dist_shift"
+    # experiment_type options: "sparse", "interpolation", "extrapolation", "dist_shift"
     
     env = make_env()
     eval_env = make_env()
     dim = env.reward_dim
-    if EXPERIMENT == "sparse":
+    if experiment_type == "sparse":
         train_weights = random_weights(dim=dim, n=3, dist="dirichlet", seed=42)
         eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif EXPERIMENT == "interpolation":
+    elif experiment_type == "interpolation":
         train_weights = random_weights(dim=dim, n=5, dist="dirichlet", seed=42)
         eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    elif EXPERIMENT == "extrapolation":
+    elif experiment_type == "extrapolation":
         train_weights = np.ones((1, dim)) / dim # central
         eval_weights = extrema_weights(dim=dim)
 
-    elif EXPERIMENT == "dist_shift":
+    elif experiment_type == "dist_shift":
         train_weights = random_weights(dim=dim, n=50, dist="gaussian", seed=42)
         eval_weights = random_weights(dim=dim, n=100, dist="dirichlet", seed=123)
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
@@ -60,13 +59,13 @@ def main(total_timesteps: int, wandb_mode: str = "online",log: bool = True, seed
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope",
+        experiment_name="Envelope_Minecart_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
-        weight_list=None,
+        train_weights=None,
         eval_env=eval_env,
         ref_point=np.array([-1, -1, -200.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),

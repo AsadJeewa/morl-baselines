@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
-def main(total_timesteps: int, wandb_mode: str = "online", log: bool = True, seed: int = 0):
+def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, seed: int = 0, exp_notes: str = ""):
     log = str(log).lower() == "true" 
     def make_env():
         extra_kwargs = {}
@@ -43,13 +43,13 @@ def main(total_timesteps: int, wandb_mode: str = "online", log: bool = True, see
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope",
+        experiment_name="Envelope_ShapesGrid_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
-        weight_list=None,
+        train_weights=None,
         eval_weights=None,
         eval_env=eval_env,
         ref_point=np.array([-5.0, -5.0, -5.0]),
