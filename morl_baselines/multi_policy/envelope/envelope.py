@@ -615,7 +615,7 @@ class Envelope(MOPolicy, MOAgent):
 
             # Checkpoint
             if checkpoints and self.global_step % save_freq == 0:
-                self.save(filename=f"Envelope step={self.global_step}", save_replay_buffer=False)
+                self.save(filename=f"{self.experiment_name}_step={self.global_step}", save_replay_buffer=False)
                 print(f"Checkpoint saved at step {self.global_step}")
 
             if terminated or truncated:
