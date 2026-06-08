@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from mo_gymnasium.envs.shapes_grid.shapes_grid import DIFFICULTY
 
-def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, seed: int = 0, exp_notes: str = ""):
+def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
     log = str(log).lower() == "true" 
     def make_env():
         extra_kwargs = {}
@@ -50,6 +50,8 @@ def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "o
         total_timesteps=total_timesteps,
         total_episodes=None,
         train_weights=None,
+        use_argmax_for_envelope=use_argmax_for_envelope,
+        use_train_weights_for_envelope=use_train_weights_for_envelope,  
         eval_weights=None,
         eval_env=eval_env,
         ref_point=np.array([-5.0, -5.0, -5.0]),
