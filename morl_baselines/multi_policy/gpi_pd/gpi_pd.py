@@ -847,6 +847,7 @@ class GPIPD(MOPolicy, MOAgent):
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
         """
+        total_timesteps = int(total_timesteps)
         if self.log:
             self.register_additional_config(
                 {
