@@ -151,6 +151,7 @@ class Envelope(MOPolicy, MOAgent):
             device: The device to use for training.
             group: The wandb group to use for logging.
         """
+        total_timesteps = int(total_timesteps)
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
         self.learning_rate = learning_rate
@@ -246,6 +247,11 @@ class Envelope(MOPolicy, MOAgent):
         saved_params["q_net_state_dict"] = self.q_net.state_dict()
 
         saved_params["q_net_optimizer_state_dict"] = self.q_optim.state_dict()
+        
+        saved_params["config"] = {
+            "net_arch": self.net_arch,
+            "envelope": self.envelope,
+        }
         if save_replay_buffer:
             saved_params["replay_buffer"] = self.replay_buffer
         filename = self.experiment_name if filename is None else filename
@@ -258,7 +264,10 @@ class Envelope(MOPolicy, MOAgent):
             path: Path to the model.
             load_replay_buffer: Whether to load the replay buffer too.
         """
-        params = th.load(path, weights_only=False)
+        params = th.load(path, weights_only=False, map_location=self.device)
+        if "config" in params and params["config"]:
+            self.net_arch = params["config"]["net_arch"]
+            self.envelope = params["config"]["envelope"]
         self.q_net.load_state_dict(params["q_net_state_dict"])
         self.target_q_net.load_state_dict(params["q_net_state_dict"])
         self.q_optim.load_state_dict(params["q_net_optimizer_state_dict"])
