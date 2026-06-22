@@ -341,7 +341,15 @@ class GPIPD(MOPolicy, MOAgent):
             saved_params["dynamics_state_dict"] = self.dynamics.state_dict()
         if save_replay_buffer:
             saved_params["replay_buffer"] = self.replay_buffer
-        filename = self.experiment_name if filename is None else filename
+        saved_params["config"] = {
+            "net_arch": self.net_arch,
+            "num_nets": self.num_nets,
+            "gpi_pd": self.gpi_pd,
+            "use_gpi": self.use_gpi,
+            "per": self.per,
+            "layer_norm": self.layer_norm,
+            "drop_rate": self.drop_rate,
+        }
         th.save(saved_params, save_dir + "/" + filename + ".tar")
 
     def load(self, path, load_replay_buffer=True):
@@ -352,6 +360,14 @@ class GPIPD(MOPolicy, MOAgent):
             target_psi_net.load_state_dict(params[f"psi_net_{i}_state_dict"])
         self.q_optim.load_state_dict(params["psi_nets_optimizer_state_dict"])
         self.weight_support = params["M"]
+        if "config" in params and params["config"]:
+            self.net_arch = params["config"]["net_arch"]
+            self.num_nets = params["config"]["num_nets"]
+            self.gpi_pd = params["config"]["gpi_pd"]
+            self.use_gpi = params["config"]["use_gpi"]
+            self.per = params["config"]["per"]
+            self.layer_norm = params["config"]["layer_norm"]
+            self.drop_rate = params["config"]["drop_rate"]
         if self.dyna:
             self.dynamics.load_state_dict(params["dynamics_state_dict"])
         if load_replay_buffer and "replay_buffer" in params:
@@ -938,7 +954,7 @@ class GPIPD(MOPolicy, MOAgent):
                 wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
             if checkpoints:
-                self.save(filename=f"GPI-PD {weight_selection_algo} iter={iter}", save_replay_buffer=False)
+                self.save(filename=f"{self.experiment_name}", save_replay_buffer=False)
 
         self.close_wandb()
 
