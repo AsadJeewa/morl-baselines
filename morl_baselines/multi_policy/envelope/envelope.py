@@ -151,7 +151,6 @@ class Envelope(MOPolicy, MOAgent):
             device: The device to use for training.
             group: The wandb group to use for logging.
         """
-        total_timesteps = int(total_timesteps)
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
         self.learning_rate = learning_rate
@@ -254,7 +253,6 @@ class Envelope(MOPolicy, MOAgent):
         }
         if save_replay_buffer:
             saved_params["replay_buffer"] = self.replay_buffer
-        filename = self.experiment_name if filename is None else filename
         th.save(saved_params, save_dir + "/" + filename + ".tar")
 
     def load(self, path: str, load_replay_buffer: bool = True):
@@ -544,6 +542,7 @@ class Envelope(MOPolicy, MOAgent):
             reset_learning_starts: whether to reset the learning starts. Useful when training multiple times.
             verbose: whether to print the episode info.
         """
+        total_timesteps = int(total_timesteps)
         if eval_env is not None:
             assert ref_point is not None, "Reference point must be provided for the hypervolume computation."
         if self.log:
@@ -624,7 +623,7 @@ class Envelope(MOPolicy, MOAgent):
 
             # Checkpoint
             if checkpoints and self.global_step % save_freq == 0:
-                self.save(filename=f"{self.experiment_name}_step={self.global_step}", save_replay_buffer=False)
+                self.save(filename=f"{self.experiment_name}", save_replay_buffer=False)
                 print(f"Checkpoint saved at step {self.global_step}")
 
             if terminated or truncated:
