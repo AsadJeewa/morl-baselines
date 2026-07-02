@@ -5,10 +5,10 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
+def main(exp_type: str = None, total_timesteps: int = 100000, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
     log = str(log).lower() == "true" 
     def make_env():
-        env = mo_gym.make("deep-sea-treasure-v0")
+        env = mo_gym.make("deep-sea-treasure-concave-v0")
         env = MORecordEpisodeStatistics(env, gamma=0.98)
         # env = MOSyncVectorEnv(env)
         return env
@@ -19,13 +19,14 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
 
     train_weights=None
     eval_weights = None
-    if experiment_type is not None:
-        if experiment_type.lower() == "intereasy":
+    if exp_type is not None:
+        if exp_type.lower() == "intereasy":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=20, n_eval=100,seed=seed)
-        elif experiment_type.lower() == "intermedium":
+        elif exp_type.lower() == "intermedium":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
-        elif experiment_type.lower() == "interdifficult":
+        elif exp_type.lower() == "interdifficult":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
+            
     agent = Envelope(
         env,
         seed=seed,
@@ -49,7 +50,7 @@ def main(experiment_type: str = None, total_timesteps: int = 100000, wandb_mode:
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope_DST_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name="Envelope_DST_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes,
     )
 
     agent.train(

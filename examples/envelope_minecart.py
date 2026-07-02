@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
+def main(total_timesteps: int, exp_type: str = None, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
     log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("minecart-v0")
@@ -14,7 +14,7 @@ def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "o
         # env = MOSyncVectorEnv(env)
         return env
 
-    # experiment_type options: "sparse", "interpolation", "extrapolation", "dist_shift"
+    # exp_type options: "sparse", "interpolation", "extrapolation", "dist_shift"
     
     env = make_env()
     eval_env = make_env()
@@ -22,27 +22,28 @@ def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "o
    
     train_weights=None
     eval_weights = None
-    if experiment_type is not None:
-        if experiment_type.lower() == "intereasy":
+    if exp_type is not None:
+        if exp_type.lower() == "intereasy":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=20, n_eval=100,seed=seed)
-        elif experiment_type.lower() == "intermedium":
+        elif exp_type.lower() == "intermedium":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
-        elif experiment_type.lower() == "interdifficult":
+        elif exp_type.lower() == "interdifficult":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
-            
-    # if experiment_type == "sparse":
+    else:
+        exp_type = "default"
+    # if exp_type == "sparse":
     #     train_weights = random_weights(dim=dim, n=3, dist="dirichlet", seed=42)
     #     eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    # elif experiment_type == "interpolation":
+    # elif exp_type == "interpolation":
     #     train_weights = random_weights(dim=dim, n=5, dist="dirichlet", seed=42)
     #     eval_weights = equally_spaced_weights(dim=dim, n=100)
 
-    # elif experiment_type == "extrapolation":
+    # elif exp_type == "extrapolation":
     #     train_weights = np.ones((1, dim)) / dim # central
     #     eval_weights = extrema_weights(dim=dim)
 
-    # elif experiment_type == "dist_shift":
+    # elif exp_type == "dist_shift":
     #     train_weights = random_weights(dim=dim, n=50, dist="gaussian", seed=42)
     #     eval_weights = random_weights(dim=dim, n=100, dist="dirichlet", seed=123)
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
@@ -70,7 +71,7 @@ def main(total_timesteps: int, experiment_type: str = None, wandb_mode: str = "o
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope_Minecart_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name="Envelope_Minecart_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes,
     )
 
     agent.train(
