@@ -6,7 +6,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
+def main(algo: str, gpi_pd: bool, g: int, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
     gpi_pd = str(gpi_pd).lower() == "true" 
     log = str(log).lower() == "true"
     def make_env():
@@ -56,7 +56,7 @@ def main(algo: str, gpi_pd: bool, g: int, experiment_type: str = None, wandb_mod
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI_DST_"+str(experiment_type)+"_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name="GPI_DST_"+str(total_timesteps)+"_"+exp_notes,
     )
 
     agent.train(
