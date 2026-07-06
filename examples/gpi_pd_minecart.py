@@ -8,11 +8,11 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 # from gymnasium.wrappers.record_video import RecordVideo
 
 
-def main(algo: str, gpi_pd: bool, g: int, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
+def main(algo: str, gpi_pd: bool, g: int, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = "", mine_config: str = "mine_config.json"):
     gpi_pd = str(gpi_pd).lower() == "true"
     log = str(log).lower() == "true"
     def make_env():
-        env = mo_gym.make("minecart-v0")
+        env = mo_gym.make("minecart-v0", config=mine_config)
         env = MORecordEpisodeStatistics(env, gamma=0.98)
         return env
 
