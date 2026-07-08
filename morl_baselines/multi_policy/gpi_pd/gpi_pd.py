@@ -954,8 +954,8 @@ class GPIPD(MOPolicy, MOAgent):
                 wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
             if checkpoints:
-                self.save(filename=f"{self.experiment_name}", save_replay_buffer=False)
-
+                self.save(filename=f"{self.experiment_name}_{self.global_step}", save_replay_buffer=False)
+                print(f"Checkpoint saved at step {self.global_step}")
         self.close_wandb()
 
 
