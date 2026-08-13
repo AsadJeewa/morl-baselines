@@ -1,11 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import torch
-
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr, spearmanr
 
 def sample_line(n_points):
-    ts = np.linspace(0, 1, n_points)
-    return ts
+    return np.linspace(0, 1, n_points)
+
 
 def sample_simplex_grid(n_points):
     """
@@ -22,24 +23,32 @@ def sample_simplex_grid(n_points):
             if t + s <= 1.0:
                 ts.append(t)
                 ss.append(s)
+
     return np.array(ts), np.array(ss)
 
-def evaluate_line(agent, algo, env, n_points=50):
+
+def evaluate_line(set_id, seed, agent, algo, env, n_points=50, exp_note=""):
+    algo_lower = algo.lower()
+
+    is_gpi = "gpi" in algo_lower
+    is_env = "env" in algo_lower
 
     ts = sample_line(n_points)
 
-    all_returns = []
+    rows = []
 
     for t in ts:
 
-        w = np.zeros(agent.reward_dim, dtype=np.float32)
+        w = np.zeros(env.unwrapped.reward_dim, dtype=np.float32)
         w[0] = t
-        w[1] = 1.0 - t   # ONLY 2 OBJECTIVES
+        w[1] = 1.0 - t
+
+        print(f"Evaluating {algo}: w={np.round(w, 3)}")
 
         obs, _ = env.reset()
         done = False
 
-        ep_return = np.zeros(agent.reward_dim, dtype=np.float32)
+        ep_return = np.zeros(env.unwrapped.reward_dim, dtype=np.float32)
 
         while not done:
 
@@ -47,115 +56,245 @@ def evaluate_line(agent, algo, env, n_points=50):
             w_tensor = torch.tensor(w, dtype=torch.float32)
 
             with torch.no_grad():
-                if "gpi" in algo.lower():
+
+                if is_gpi:
                     action = agent.gpi_action(obs_tensor, w_tensor)
-                elif "env" in algo.lower():
-                    q = agent.q_net(obs_tensor.unsqueeze(0), w_tensor.unsqueeze(0))
-                    action = (q * w_tensor.unsqueeze(1)).sum(dim=2).argmax(dim=1).item()
+
+                elif is_env:
+                    q = agent.q_net(
+                        obs_tensor.unsqueeze(0),
+                        w_tensor.unsqueeze(0)
+                    )
+
+                    action = torch.einsum(
+                        "bar,r->ba",
+                        q,
+                        w_tensor
+                    ).argmax(dim=1).item()
+
+                else:
+                    action = env.action_space.sample()
 
             obs, vec_reward, terminated, truncated, _ = env.step(action)
 
             ep_return += vec_reward
             done = terminated or truncated
 
-        all_returns.append(ep_return)
+        rows.append({
+            "set_id": set_id,
+            "training_seed": seed,
+            "algo": algo,
+            "t": t,
+            **{f"w{i}": wi for i, wi in enumerate(w)},
+            **{f"r{i}": ri for i, ri in enumerate(ep_return)}
+        })
 
-    return ts, np.array(all_returns)
+    df = pd.DataFrame(rows)
+    df.to_csv(f"pref_line_{algo}_{exp_note}.csv",  mode="a", index=False)
 
-def evaluate_simplex(agent, algo, env, n_points=10):
+    plt.figure(figsize=(7, 5))
+
+    r_cols = [c for c in df.columns if c.startswith("r")]
+
+    for i, r in enumerate(r_cols):
+        plt.plot(df["t"], df[r], label=f"Obj {i}")
+
+    plt.xlabel("t (w0)")
+    plt.ylabel("Return")
+    plt.title(f"{algo} Preference Line")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"results/{env.spec.id}/pref_line_{algo}_{exp_note}.png")
+    plt.close()
+
+
+def evaluate_simplex(set_id, seed, agent, algo, env, n_points=10, exp_note="", right_angled=True):
+    algo_lower = algo.lower()
+
+    is_gpi = "gpi" in algo_lower
+    is_env = "env" in algo_lower
 
     ts, ss = sample_simplex_grid(n_points)
-
-    all_returns = []
-
+    rows = []
     for t, s in zip(ts, ss):
 
-        w = np.zeros(agent.reward_dim, dtype=np.float32)
+        w = np.zeros(env.unwrapped.reward_dim, dtype=np.float32)
         w[0] = t
         w[1] = s
-        w[2] = 1.0 - t - s   # simplex constraint
+        w[2] = 1.0 - t - s
 
         print(f"Evaluating w = {w}")
 
         obs, _ = env.reset()
         done = False
 
-        ep_return = np.zeros(agent.reward_dim, dtype=np.float32)
-
+        ep_return = np.zeros(env.unwrapped.reward_dim, dtype=np.float32)
+        i=0
         while not done:
 
             obs_tensor = torch.tensor(obs, dtype=torch.float32)
             w_tensor = torch.tensor(w, dtype=torch.float32)
 
             with torch.no_grad():
-                if "gpi" in algo.lower():
-                    action = agent.gpi_action(obs_tensor, w_tensor)
-                elif "env" in algo.lower():
-                    q = agent.q_net(obs_tensor.unsqueeze(0), w_tensor.unsqueeze(0))
-                    action = (q * w_tensor.unsqueeze(1)).sum(dim=2).argmax(dim=1).item()
-                
 
+                if is_gpi:
+                    action = agent.gpi_action(obs_tensor, w_tensor)
+
+                elif is_env:
+                    q = agent.q_net(
+                        obs_tensor.unsqueeze(0),
+                        w_tensor.unsqueeze(0)
+                    )
+
+                    action = torch.einsum(
+                        "bar,r->ba",
+                        q,
+                        w_tensor
+                    ).argmax(dim=1).item()
+
+                else:
+                    action = env.action_space.sample()
             obs, vec_reward, terminated, truncated, _ = env.step(action)
+            # print(action) # only 4
+            i+=1
 
             ep_return += vec_reward
             done = terminated or truncated
 
-        all_returns.append(ep_return)
+        rows.append({
+            "set_id": set_id,
+            "training_seed": seed,
+            "algo": algo,
+            "t": t,
+            "s": s,
+            **{f"w{i}": wi for i, wi in enumerate(w)},
+            **{f"r{i}": ri for i, ri in enumerate(ep_return)}
+        })
 
-    return np.array(ts), np.array(ss), np.array(all_returns)
+    df = pd.DataFrame(rows)
+    df.to_csv(f"results/{env.spec.id}/pref_simplex_{algo}_{exp_note}.csv", mode="a", index=False)
+    
+    r_cols = [c for c in df.columns if c.startswith("r")]
+    num_obj = len(r_cols)
 
+    fig, axes = plt.subplots(
+        1,
+        num_obj,
+        figsize=(6 * num_obj, 5),
+        sharex=True,
+        sharey=True,
+    )
 
-def plot_preferences(agent, algo, env, n_points=50, exp_note=""):
+    if num_obj == 1:
+        axes = [axes]
 
-    dim = agent.reward_dim
+    for i, r in enumerate(r_cols):
 
-    if dim == 2:
+        vals = df[r]
+        alpha = np.where(vals == 0, 1.0, 0.6) # highlight 0 to be fully opaque
+        if i == 2:
+            vals = -np.log(-vals + 1e-6)  # only if all vals < 0
 
-        ts, returns = evaluate_line(agent, algo, env, n_points)
-
-        plt.figure(figsize=(7, 5))
-
-        for obj in range(dim):
-            plt.plot(ts, returns[:, obj], label=f"Obj {obj}")
-
-        plt.xlabel("t (w0)")
-        plt.ylabel("Return")
-        plt.title("Preference Line (2-objective MORL)")
-        plt.legend()
-        plt.grid(True)
-
-        plt.tight_layout()
-        plt.savefig("pref_line_" + exp_note + ".png")
-
-    else:
-
-        ts, ss, returns = evaluate_simplex(agent, algo, env, n_points)
-
-        fig, axes = plt.subplots(
-            1,
-            dim,
-            figsize=(6 * dim, 5),
-            sharex=True,
-            sharey=True
-        )
-
-        if dim == 1:
-            axes = [axes]
-
-        for obj, ax in enumerate(axes):
-
-            sc = ax.scatter(
-                ts,
-                ss,
-                c=returns[:, obj],
-                cmap="viridis"
+        if right_angled:
+            sc = axes[i].scatter(
+                df["t"],
+                df["s"],
+                c=vals,
+                s=40,
+                cmap="viridis",
+                alpha=alpha,
             )
 
-            ax.set_title(f"Objective {obj}")
-            ax.set_xlabel("t (w0)")
-            ax.set_ylabel("s (w1)")
+            # axes[i].set_xlim(0, 1)
+            # axes[i].set_ylim(0, 1)
+            axes[i].set_title(f"Objective {i}")
+            axes[i].set_xlabel("t (w0)")
+            axes[i].set_ylabel("s (w1)")
 
-            plt.colorbar(sc, ax=ax)
+        else:
+            w0 = ts
+            w1 = ss
+            w2 = 1 - ts - ss
 
-        plt.tight_layout()
-        plt.savefig("pref_simplex_" + exp_note + ".png")
+            x = w1 + 0.5 * w2
+            y = (np.sqrt(3) / 2) * w2
+
+            sc = axes[i].scatter(
+                x,
+                y,
+                c=df[r],
+                cmap="viridis"
+            )
+            axes[i].text(0, -0.035, "w0=1")
+            axes[i].text(1, -0.035, "w1=1")
+            axes[i].text(0.5, np.sqrt(3)/2, "w2=1")
+
+        plt.colorbar(sc, ax=axes[i])
+
+    plt.tight_layout()
+    print("PLOTTING")
+    plt.savefig(f"results/{env.spec.id}/pref_simplex_{algo}_{exp_note}.png")
+    plt.close()
+
+
+def plot_preferences(set_id, seed,agent, env, algo, n_points=50, exp_note="", right_angled=True):
+
+    if env.unwrapped.reward_dim == 2:
+        evaluate_line(
+            set_id,
+            seed,
+            agent,
+            algo,
+            env,
+            n_points=n_points,
+            exp_note=exp_note
+        )
+    elif env.unwrapped.reward_dim == 3:
+        evaluate_simplex(
+            set_id,
+            seed,
+            agent,
+            algo,
+            env,
+            n_points=n_points,
+            exp_note=exp_note,
+            right_angled=right_angled
+        )
+    else:
+        raise ValueError(
+            "plot_preferences currently supports only 2 or 3 objectives."
+        )
+    
+def plot_correlations(env, algo, all_weights, all_returns, exp_note=""):
+    num_obj = all_returns.shape[1]
+
+    print("\n=== Correlations ===")
+
+    for obj in range(num_obj):
+        p_corr, _ = pearsonr(all_weights[:, obj], all_returns[:, obj])
+        s_corr, _ = spearmanr(all_weights[:, obj], all_returns[:, obj])
+
+        print(f"Obj {obj} | Pearson: {p_corr:.3f} | Spearman: {s_corr:.3f}")
+
+    fig, axes = plt.subplots(1, num_obj, figsize=(5 * num_obj, 4))
+
+    for i in range(num_obj):
+        x = all_weights[:, i]
+        y = all_returns[:, i]
+
+        axes[i].scatter(x, y)
+
+        coeffs = np.polyfit(x, y, 1)
+        line = np.poly1d(coeffs)
+
+        xs = np.linspace(x.min(), x.max(), 100)
+        axes[i].plot(xs, line(xs))
+
+        axes[i].set_xlabel(f"w[{i}]")
+        axes[i].set_ylabel(f"r[{i}]")
+        axes[i].set_title(f"Obj {i}")
+
+    plt.tight_layout()
+    plt.savefig(f"results/{env.spec.id}/weight_return_scatter_{algo}_{exp_note}.png")
+    plt.close()
