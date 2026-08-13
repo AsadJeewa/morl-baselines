@@ -195,7 +195,7 @@ if num_objectives == 2:
     plt.title('Pareto Front (2 Objectives)')
     plt.legend()
     plt.grid(True)
-    plt.savefig(fig_name)  # saves figure to file
+    plt.savefig(f"results/{env.spec.id}/{fig_name}")  # saves figure to file
     plt.close()  # closes the figure
 elif num_objectives == 3:
     fig = plt.figure(figsize=(7,6))
@@ -205,7 +205,7 @@ elif num_objectives == 3:
     ax.set_ylabel('Objective 1')
     ax.set_zlabel('Objective 2')
     ax.set_title('Pareto Front (3 Objectives)')
-    plt.savefig(fig_name)  # saves figure to file
+    plt.savefig(f"results/{env.spec.id}/{fig_name}")  # saves figure to file
     plt.close()  # closes the figure
 
 
