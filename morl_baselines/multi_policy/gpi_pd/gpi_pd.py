@@ -350,6 +350,7 @@ class GPIPD(MOPolicy, MOAgent):
             "layer_norm": self.layer_norm,
             "drop_rate": self.drop_rate,
         }
+        saved_params["seed"] = self.seed
         th.save(saved_params, save_dir + "/" + filename + ".tar")
 
     def load(self, path, load_replay_buffer=True):
@@ -360,6 +361,7 @@ class GPIPD(MOPolicy, MOAgent):
             target_psi_net.load_state_dict(params[f"psi_net_{i}_state_dict"])
         self.q_optim.load_state_dict(params["psi_nets_optimizer_state_dict"])
         self.weight_support = params["M"]
+        self.seed = params.get("seed", None)
         if "config" in params and params["config"]:
             self.net_arch = params["config"]["net_arch"]
             self.num_nets = params["config"]["num_nets"]

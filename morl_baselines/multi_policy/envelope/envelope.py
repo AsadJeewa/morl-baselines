@@ -251,6 +251,7 @@ class Envelope(MOPolicy, MOAgent):
             "net_arch": self.net_arch,
             "envelope": self.envelope,
         }
+        saved_params["seed"] = self.seed
         if save_replay_buffer:
             saved_params["replay_buffer"] = self.replay_buffer
         th.save(saved_params, save_dir + "/" + filename + ".tar")
@@ -266,6 +267,7 @@ class Envelope(MOPolicy, MOAgent):
         if "config" in params and params["config"]:
             self.net_arch = params["config"]["net_arch"]
             self.envelope = params["config"]["envelope"]
+        self.seed = params.get("seed", None)
         self.q_net.load_state_dict(params["q_net_state_dict"])
         self.target_q_net.load_state_dict(params["q_net_state_dict"])
         self.q_optim.load_state_dict(params["q_net_optimizer_state_dict"])
