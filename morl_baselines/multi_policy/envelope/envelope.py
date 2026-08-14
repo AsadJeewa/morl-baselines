@@ -208,7 +208,7 @@ class Envelope(MOPolicy, MOAgent):
 
         self.log = log
         if log:
-            self.setup_wandb(project_name=project_name, experiment_name=experiment_name, wandb_entity=wandb_entity, group=group, wandb_mode=wandb_mode)
+            self.setup_wandb(project_name=project_name, experiment_name=experiment_name, entity=wandb_entity, group=group, mode=wandb_mode)
 
     @override
     def get_config(self):
