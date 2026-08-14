@@ -46,6 +46,7 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
     #     eval_weights = random_weights(dim=dim, n=100, dist="dirichlet", seed=123)
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
 
+    experiment_name="Envelope_Minecart_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes+"_"+str(seed)
     agent = Envelope(
         env,
         seed=seed,
@@ -69,7 +70,8 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope_Minecart_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes,
+        experiment_name=experiment_name,
+        group = experiment_name.rsplit("_", 1)[0]
     )
 
     agent.train(
@@ -87,7 +89,7 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         # reset_num_timesteps=False,
         # reset_learning_starts=False,
         checkpoints=True,
-        save_freq=10000,
+        save_freq=100000,
     )
 
 

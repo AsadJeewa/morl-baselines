@@ -31,6 +31,8 @@ def main(total_timesteps: int=200000, exp_type: str = "default", wandb_mode: str
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=10, n_eval=100,seed=seed)
         elif exp_type.lower() == "interdifficult":
             train_weights, eval_weights = equally_spaced_train_and_eval_weights(dim=dim, n_train=5, n_eval=100,seed=seed)
+
+    experiment_name="Envelope_MO-Reacher_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes+"_"+str(seed)
     agent = Envelope(
         env,
         seed=seed,
@@ -55,7 +57,8 @@ def main(total_timesteps: int=200000, exp_type: str = "default", wandb_mode: str
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope_MO-Reacher_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes,
+        experiment_name=experiment_name,
+        group = experiment_name.rsplit("_", 1)[0]
     )
 
     agent.train(
@@ -73,7 +76,7 @@ def main(total_timesteps: int=200000, exp_type: str = "default", wandb_mode: str
         # reset_num_timesteps=False,
         # reset_learning_starts=False,
         checkpoints=True,
-        save_freq=10000,
+        save_freq=100000,
     )
 
 

@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
+import secrets
 
 from morl_baselines.common.buffer import ReplayBuffer
 from morl_baselines.common.evaluation import (
@@ -184,6 +185,10 @@ class Envelope(MOPolicy, MOAgent):
         self.envelope = envelope
         self.num_sample_w = num_sample_w
         self.homotopy_lambda = self.initial_homotopy_lambda
+
+        self.experiment_name = experiment_name
+        self.group = group
+
         if self.per:
             self.replay_buffer = PrioritizedReplayBuffer(
                 self.observation_shape,
@@ -203,7 +208,7 @@ class Envelope(MOPolicy, MOAgent):
 
         self.log = log
         if log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, group, wandb_mode)
+            self.setup_wandb(project_name=project_name, experiment_name=experiment_name, wandb_entity=wandb_entity, group=group, wandb_mode=wandb_mode)
 
     @override
     def get_config(self):
@@ -544,12 +549,14 @@ class Envelope(MOPolicy, MOAgent):
             reset_learning_starts: whether to reset the learning starts. Useful when training multiple times.
             verbose: whether to print the episode info.
         """
+        run_id = secrets.token_urlsafe(4)[:6]
         total_timesteps = int(total_timesteps)
         if eval_env is not None:
             assert ref_point is not None, "Reference point must be provided for the hypervolume computation."
         if self.log:
             self.register_additional_config(
                 {
+                    "run_id": run_id,
                     "total_timesteps": total_timesteps,
                     "ref_point": ref_point.tolist() if ref_point is not None else None,
                     "known_front": known_pareto_front,
@@ -625,7 +632,7 @@ class Envelope(MOPolicy, MOAgent):
 
             # Checkpoint
             if checkpoints and self.global_step % save_freq == 0:
-                self.save(filename=f"{self.experiment_name}_{self.global_step}", save_replay_buffer=False)
+                self.save(filename=f"{self.experiment_name}_{run_id}_{self.global_step}", save_replay_buffer=False)
                 print(f"Checkpoint saved at step {self.global_step}")
 
             if terminated or truncated:

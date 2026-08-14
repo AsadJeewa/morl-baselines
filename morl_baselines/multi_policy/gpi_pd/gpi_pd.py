@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
+import secrets
 
 from morl_baselines.common.buffer import ReplayBuffer
 from morl_baselines.common.evaluation import (
@@ -140,6 +141,7 @@ class GPIPD(MOPolicy, MOAgent):
         wandb_mode: Literal["online", "offline", "disabled"] = "online",
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
+        group: Optional[str] = None,
     ):
         """Initialize the GPI-PD algorithm.
 
@@ -186,6 +188,7 @@ class GPIPD(MOPolicy, MOAgent):
             wandb_mode (str): The mode for Weights & Biases logging, either "online", "offline", or "disabled".
             seed: The seed for random number generators.
             device: The device to use.
+            group: The group name for Weights & Biases logging.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device=device)
@@ -208,6 +211,8 @@ class GPIPD(MOPolicy, MOAgent):
         self.drop_rate = drop_rate
         self.layer_norm = layer_norm
 
+        self.experiment_name = experiment_name
+        self.group = group
         # Q-Networks
         self.q_nets = [
             QNet(
@@ -288,7 +293,7 @@ class GPIPD(MOPolicy, MOAgent):
         # logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_mode)
+            self.setup_wandb(project_name=project_name, experiment_name=experiment_name, wandb_entity=wandb_entity, group=group, wandb_mode=wandb_mode)
 
     def get_config(self):
         """Return the configuration of the agent."""
@@ -848,6 +853,7 @@ class GPIPD(MOPolicy, MOAgent):
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = True,
+        save_freq: int = 10000,
     ):
         """Train agent.
 
@@ -864,7 +870,9 @@ class GPIPD(MOPolicy, MOAgent):
             eval_freq (int): Number of timesteps between evaluations.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
+            save_freq (int): Number of timesteps between checkpoints.
         """
+        run_id = secrets.token_urlsafe(4)[:6]
         total_timesteps = int(total_timesteps)
         if self.log:
             self.register_additional_config(
@@ -955,8 +963,8 @@ class GPIPD(MOPolicy, MOAgent):
                 )
                 wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
-            if checkpoints:
-                self.save(filename=f"{self.experiment_name}_{self.global_step}", save_replay_buffer=False)
+            if checkpoints and self.global_step % save_freq == 0:
+                self.save(filename=f"{self.experiment_name}_{run_id}_{self.global_step}", save_replay_buffer=False)
                 print(f"Checkpoint saved at step {self.global_step}")
         self.close_wandb()
 

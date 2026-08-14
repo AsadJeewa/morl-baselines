@@ -19,7 +19,8 @@ def main(total_timesteps: int, exp_type: str = "default", wandb_mode: str = "onl
     env = make_env()
     eval_env = make_env()
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
-
+    
+    experiment_name="Envelope_ShapesGrid_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes+"_"+str(seed)
     agent = Envelope(
         env,
         seed=seed,
@@ -43,7 +44,8 @@ def main(total_timesteps: int, exp_type: str = "default", wandb_mode: str = "onl
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="Envelope_ShapesGrid_"+str(total_timesteps)+"_"+exp_type+"_"+exp_notes,
+        experiment_name=experiment_name,
+        group = experiment_name.rsplit("_", 1)[0]
     )
 
     agent.train(
@@ -61,7 +63,7 @@ def main(total_timesteps: int, exp_type: str = "default", wandb_mode: str = "onl
         reset_num_timesteps=False,
         reset_learning_starts=False,
         checkpoints=True,
-        save_freq=1000,
+        save_freq=100000,
     )
 
 

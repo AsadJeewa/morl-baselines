@@ -48,6 +48,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, timesteps_per_i
         known_pareto_front=None,
         weight_selection_algo=algo,
         timesteps_per_iter=timesteps_per_iter,
+        save_freq=100000,
     )
 
 

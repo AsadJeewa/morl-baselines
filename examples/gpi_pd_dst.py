@@ -20,7 +20,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str =
     dim = env.reward_dim
     # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
 
-
+    experiment_name="GPI_DST_"+str(total_timesteps)+"_"+exp_notes+"_"+str(seed)
     agent = GPIPD(
         env,
         seed=seed,
@@ -56,7 +56,8 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str =
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
-        experiment_name="GPI_DST_"+str(total_timesteps)+"_"+exp_notes,
+        experiment_name=experiment_name,
+        group = experiment_name.rsplit("_", 1)[0]
     )
 
     agent.train(
@@ -68,6 +69,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str =
         timesteps_per_iter=timesteps_per_iter,
         # eval_freq=1000,
         checkpoints=True,
+        save_freq=100000,
     )
 
 
