@@ -8,7 +8,7 @@ os.environ["MUJOCO_GL"] = "egl"
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(total_timesteps: int=200000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", mine_config: str = "mine_config.json"):
+def main(total_timesteps: int=500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
     log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("mo-reacher-v5")
@@ -37,22 +37,22 @@ def main(total_timesteps: int=200000, exp_type: str = "default", wandb_mode: str
         env,
         seed=seed,
         max_grad_norm=1.0,#0.1 CHECK WAS TOO LOW
-        learning_rate=3e-4,# 3e-4 CHECK WAS LOW 
+        learning_rate=1e-4,# 3e-4 CHECK WAS LOW 
         gamma=0.99,
-        batch_size=64,
+        batch_size=128,
         net_arch=[256, 256, 256, 256],
-        buffer_size=int(1e6),
+        buffer_size=int(5e5),
         initial_epsilon=1.0,
         final_epsilon=0.05,
-        epsilon_decay_steps=100000,
+        epsilon_decay_steps=50000,
         initial_homotopy_lambda=0,
         final_homotopy_lambda=1,
         # homotopy_decay_steps=0,
-        learning_starts=100,
+        learning_starts=5000,
         per=True,
         envelope=True,
         gradient_updates=1,
-        target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
+        target_net_update_freq=2000,  # 1000,  # 500 reduce by gradient updates
         tau=1,
         log=log,
         wandb_mode=wandb_mode,
