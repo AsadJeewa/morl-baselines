@@ -5,7 +5,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(exp_type: str = "default", total_timesteps: int = 200000, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
+def main(exp_type: str = "default", total_timesteps: int = 200000, wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", learning_rate: float = 3e-4, gradient_updates: int = 2, batch_size: int = 256, tau: float = 1, initial_epsilon: float = 0.5, final_epsilon: float = 0.01, epsilon_decay_fraction: float = 0.6):
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
@@ -32,22 +32,22 @@ def main(exp_type: str = "default", total_timesteps: int = 200000, wandb_mode: s
         env,
         seed=seed,
         max_grad_norm=1.0,
-        learning_rate=3e-4,
+        learning_rate=learning_rate,
         gamma=0.99,
-        batch_size=256,
+        batch_size=batch_size,
         net_arch=[256,256],
         buffer_size=int(5e4),
-        initial_epsilon=0.5,
-        final_epsilon=0.01,
-        epsilon_decay_steps=total_timesteps*0.6,
+        initial_epsilon=initial_epsilon,
+        final_epsilon=final_epsilon,
+        epsilon_decay_steps=total_timesteps*epsilon_decay_fraction,
         initial_homotopy_lambda=0.2,
         final_homotopy_lambda=0.2,
         homotopy_decay_steps=total_timesteps,
         learning_starts=1000,
         envelope=True,
-        gradient_updates=2,
+        gradient_updates=gradient_updates,
         target_net_update_freq=1000, 
-        tau=1,
+        tau=tau,
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",

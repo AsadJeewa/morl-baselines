@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", mine_config: str = "mine_config.json"):
+def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", mine_config: str = "mine_config.json", learning_rate: float = 2e-4, gradient_updates: int = 5, batch_size: int = 32, tau: float = 0.1):
     log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("minecart-v0", config=mine_config)
@@ -51,9 +51,9 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         env,
         seed=seed,
         max_grad_norm=1.0,#0.1 CHECK WAS TOO LOW
-        learning_rate=2e-4,# 3e-4 CHECK WAS LOW 
+        learning_rate=learning_rate,# 3e-4 CHECK WAS LOW 
         gamma=0.98,
-        batch_size=32,
+        batch_size=batch_size,
         net_arch=[256, 256, 256, 256],
         buffer_size=int(1.5e6),
         initial_epsilon=0.8,
@@ -64,9 +64,9 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         homotopy_decay_steps=10000,
         learning_starts=1000,
         envelope=True,
-        gradient_updates=5,
+        gradient_updates=gradient_updates,
         target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
-        tau=0.1,
+        tau=tau,
         log=log,
         wandb_mode=wandb_mode,
         project_name="MORL-Baselines",
@@ -77,13 +77,13 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
     agent.train(
         total_timesteps=total_timesteps,
         total_episodes=None,
-        train_weights=None,
+        train_weights=train_weights,
         use_argmax_for_envelope=use_argmax_for_envelope,
         use_train_weights_for_envelope=use_train_weights_for_envelope,  
         eval_env=eval_env,
         ref_point=np.array([-1, -1, -200.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),
-        eval_weights = None,
+        eval_weights = eval_weights,
         num_eval_weights_for_front=100,
         eval_freq=1000,
         # reset_num_timesteps=False,

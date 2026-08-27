@@ -6,7 +6,7 @@ from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = ""):
+def main(algo: str = "gpi-ls", gpi_pd: bool = False, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = "", learning_rate: float = 3e-4, batch_size: int = 128, tau: float = 1, gradient_updates: int = 8, final_epsilon: float = 0.05):
     gpi_pd = str(gpi_pd).lower() == "true" 
     log = str(log).lower() == "true"
     def make_env():
@@ -26,13 +26,13 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str =
         seed=seed,
         num_nets=2,
         max_grad_norm=None,
-        learning_rate=3e-4,
+        learning_rate=learning_rate,
         gamma=0.98,
-        batch_size=128,
+        batch_size=batch_size,
         net_arch=[256, 256],
         buffer_size=int(1e6),
         initial_epsilon=1.0,
-        final_epsilon=0.05,
+        final_epsilon=final_epsilon,
         epsilon_decay_steps=total_timesteps*0.6,
         learning_starts=1000,
         alpha_per=0.6,
@@ -40,9 +40,9 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 8, exp_type: str =
         per=gpi_pd,
         gpi_pd=gpi_pd,
         use_gpi=True,
-        gradient_updates=g,
+        gradient_updates=gradient_updates,
         target_net_update_freq=100,
-        tau=1,
+        tau=tau,
         dyna=gpi_pd,
         dynamics_uncertainty_threshold=1.5,
         dynamics_net_arch=[256, 256],

@@ -1,0 +1,32 @@
+project: MORL-Baselines
+
+program: sweep.py
+method: grid
+
+metric:
+  name: eval/hypervolume
+  goal: maximize
+
+parameters:
+  algo:
+    value: gpi
+  env:
+    value: minecart
+
+  total_timesteps:
+    value: 500000
+
+  learning_rate:
+    values: [0.0001, 0.0003]
+
+  gradient_updates:
+    values: [5, 10]
+
+  batch_size:
+    values: [64, 128]
+
+  tau:
+    value: 1.0
+
+  seed:
+    values: [1, 2, 3]
