@@ -9,6 +9,7 @@ metric:
   goal: maximize
 
 parameters:
+
   algo:
     value: gpi
 
@@ -16,16 +17,13 @@ parameters:
     value: dst
 
   total_timesteps:
-    value: 150000
+    value: 400000
 
   learning_rate:
-    values: [0.0002, 0.0003]
+    values: [0.0003, 0.001, 0.003]
 
   gradient_updates:
-    values: [4, 8]
-
-  final_epsilon:
-    values: [0.01, 0.05]
+    values: [8, 20]
 
   seed:
     values: [1, 2]
