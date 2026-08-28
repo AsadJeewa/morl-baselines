@@ -60,7 +60,6 @@ def train():
                 seed=config.seed,
                 learning_rate=config.learning_rate,
                 gradient_updates=config.gradient_updates,
-                final_epsilon=config.final_epsilon,
                 log=True,
                 wandb_mode="online",
             )
