@@ -1,6 +1,6 @@
+import secrets
+
 import pandas as pd
-import uuid
-import gymnasium as gym
 import mo_gymnasium as mo_gym
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 import numpy as np
@@ -10,22 +10,30 @@ from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from morl_baselines.common.weights import equally_spaced_weights
 from morl_baselines.common.plot_utils import plot_preferences, plot_correlations #TODO pairwise
+from morl_baselines.common.evaluation import log_all_multi_policy_metrics, compute_all_controllability_metrics
+from morl_baselines.common.pareto import filter_pareto_dominated
+import wandb
+
 import torch
-import time
 import matplotlib.pyplot as plt
-import seaborn as sns
-import re
 from pathlib import Path
 import fire
 import ast
 from gymnasium.wrappers import RecordVideo
 import os
-from scipy.stats import spearmanr
 from tqdm import tqdm
 
-def main(algo:str, seed: int = 0, env_id: str = "minecart-v0", num_eval_episodes: int = 10,num_neurons: int = 256, num_layers: int = 4, checkpoint_file: str = None, exp_note: str = "", n_points=30, record_video: bool = False, right_angled: bool = True, mine_config: str = "mine_config.json"):
+def main(algo: str, seed: int = 0, env_id: str = "minecart-v0", 
+         ref_point: str = "[-1,-1,-200]",
+         use_wandb: bool = False,
+         project_name: str = "MORL-Baselines",
+         num_eval_episodes: int = 10, num_neurons: int = 256, num_layers: int = 4, 
+         checkpoint_file: str = None, exp_note: str = "", n_points=30, 
+         record_video: bool = False, right_angled: bool = True, 
+         mine_config: str = "mine_config.json"):
     RENDER_DELAY = 0
     right_angled = str(right_angled).lower() == "true"
+    ref_point = np.array(ast.literal_eval(ref_point))
     net_arch = [int(num_neurons)] * int(num_layers)
     if checkpoint_file:
         checkpoint_location = checkpoint_location = f"examples/weights/{Path(checkpoint_file).name}.tar"
@@ -114,45 +122,49 @@ def main(algo:str, seed: int = 0, env_id: str = "minecart-v0", num_eval_episodes
     weights = equally_spaced_weights(dim=num_obj, n=num_eval_weights, seed=seed+1000)
     all_weights, all_returns = evaluate_policy(agent=agent, env=env, weights=weights, algo=algo, num_eval_episodes=num_eval_episodes)
 
-    set_id = str(uuid.uuid4())
-    print(set_id)
+    run_id = secrets.token_urlsafe(4)[:6]
     # plot_correlations(env, algo, all_weights, all_returns, exp_note=exp_note)
-    plot_preferences(set_id=set_id,seed=training_seed,agent=agent, env=env, algo=algo, n_points=n_points, exp_note=exp_note, right_angled=right_angled)
-    CO = compute_controllability(
-        all_weights,
-        all_returns
+    plot_preferences(run_id=run_id,seed=training_seed,agent=agent, env=env, algo=algo, n_points=n_points, exp_note=exp_note, right_angled=right_angled)
+
+    metrics = compute_all_controllability_metrics(all_weights, all_returns)
+    print("Preference controllability:", metrics["preference_controllability"])
+    print("Local sensitivity:", metrics["local_sensitivity"])
+    print("Objective controllability:", [v for k, v in metrics.items() if k.startswith("objective_controllability")])
+
+    filtered_front = list(filter_pareto_dominated(all_returns))
+
+    if use_wandb:
+        wandb.init(
+            project=project_name,
+            name=f"{algo}_{env_id}_{exp_note}_seed{training_seed}",
+        )
+
+    log_all_multi_policy_metrics(
+        current_front=filtered_front,
+        hv_ref_point=ref_point,
+        reward_dim=num_obj,
+        global_step=0,
+        n_sample_weights=50,
     )
-    # Objective-wise controllability
-    objective_control = []
 
-    for d in range(num_obj):
-        preference_d = all_weights[:, d]
-        return_d = all_returns[:, d]
-
-        corr, _ = spearmanr(preference_d, return_d)
-        objective_control.append(corr)
-
-    objective_control = np.array(objective_control)
-
-    norm_returns = normalize_returns(all_returns)
-    local_sensitivity = compute_local_sensitivity(all_weights, all_returns) # norm_returns)
-
-    print("Preference controllability:", CO)
-    print("Objective controllability:", objective_control)
-    print("Local sensitivity:", local_sensitivity)
+    if use_wandb:
+        wandb.log({
+            "eval/preference_controllability": metrics["preference_controllability"],
+            "eval/local_sensitivity": metrics["local_sensitivity"],
+            **{f"eval/{k}": v for k, v in metrics.items() if k.startswith("objective_controllability")},
+        })
+        wandb.finish()
 
     data = {
-    "set_id": set_id,
-    "training_seed": training_seed,
-    # "hypervolume": hv,
-    # "sparsity": sprs,
-    # "expected_utility": expected_utility(front, weights_list[mask]),
-    "preference_controllability": CO,
-    "local_sensitivity": local_sensitivity
+        "run_id": run_id,
+        "training_seed": training_seed,
+        "preference_controllability": metrics["preference_controllability"],
+        "local_sensitivity": metrics["local_sensitivity"],
     }
-    # Add one column per objective
-    for d, score in enumerate(objective_control):
-        data[f"objective_controllability_{d}"] = score
+    for k, v in metrics.items():
+        if k.startswith("objective_controllability"):
+            data[k] = v
+
     df = pd.DataFrame([data])
     filepath = f"results/{env_id}/metrics_{algo}_{exp_note}.csv"
     df.to_csv(filepath, mode="a", index=False, header=not os.path.isfile(filepath))
@@ -213,46 +225,6 @@ def evaluate_policy(agent, env, weights, algo, num_eval_episodes):
         all_returns.append(mean_return)
     pbar.close()
     return np.array(all_weights), np.array(all_returns)
-
-def compute_controllability(weights, returns):
-    """
-    Cosine preference controllability.
-    Measures alignment between requested preferences and realised returns.
-    """
-
-    weights_norm = weights / (np.linalg.norm(weights, axis=1, keepdims=True) + 1e-8)
-    returns_norm = returns / (np.linalg.norm(returns, axis=1, keepdims=True) + 1e-8)
-
-    scores = np.sum(weights_norm * returns_norm, axis=1)
-
-    return np.mean(scores)
-
-def compute_local_sensitivity(weights, returns):
-    sensitivities = []
-
-    for i in range(len(weights)):
-        distances = np.linalg.norm(weights - weights[i], axis=1)
-        distances[i] = np.inf
-
-        j = np.argmin(distances)
-
-        dw = np.linalg.norm(weights[i] - weights[j])
-        dr = np.linalg.norm(returns[i] - returns[j])
-        # change in preference / change in behaviour​
-        sensitivities.append(dr / (dw + 1e-8))
-    return np.mean(sensitivities)
-
-def normalize_returns(returns, max_r=None, min_r=None):
-    """
-    Normalise each objective independently to [0,1].
-    returns: (N, D)
-    """
-    if min_r is None:
-        min_r = returns.min(axis=0)
-    if max_r is None:
-        max_r = returns.max(axis=0)
-
-    return (returns - min_r) / (max_r - min_r + 1e-8)
 
 if __name__ == "__main__":
     fire.Fire(main)
