@@ -19,7 +19,10 @@ from morl_baselines.common.evaluation import (
     log_all_multi_policy_metrics,
     log_episode_info,
     policy_evaluation_mo,
+    compute_all_controllability_metrics
 )
+from morl_baselines.common.pareto import filter_pareto_dominated
+from morl_baselines.common.performance_indicators import hypervolume
 from morl_baselines.common.model_based.probabilistic_ensemble import (
     ProbabilisticEnsemble,
 )
@@ -213,6 +216,7 @@ class GPIPD(MOPolicy, MOAgent):
 
         self.experiment_name = experiment_name
         self.group = group
+        self.best_hv = -np.inf
         # Q-Networks
         self.q_nets = [
             QNet(
@@ -887,6 +891,7 @@ class GPIPD(MOPolicy, MOAgent):
                     "weight_selection_algo": weight_selection_algo,
                     "eval_freq": eval_freq,
                     "eval_mo_freq": eval_mo_freq,
+                    "run_id": run_id,
                 }
             )
         max_iter = total_timesteps // timesteps_per_iter
@@ -936,19 +941,21 @@ class GPIPD(MOPolicy, MOAgent):
             )
 
             if weight_selection_algo == "ols":
-                value = policy_evaluation_mo(self, eval_env, w, rep=num_eval_episodes_for_front)[3]
+                value = policy_evaluation_mo(self, eval_env, w, rep=num_eval_episodes_for_front)[3] # TODO should be 2
                 linear_support.add_solution(value, w)
             elif weight_selection_algo == "gpi-ls":
                 for wcw in M:
-                    n_value = policy_evaluation_mo(self, eval_env, wcw, rep=num_eval_episodes_for_front)[3]
+                    n_value = policy_evaluation_mo(self, eval_env, wcw, rep=num_eval_episodes_for_front)[3] # TODO should be 2
                     linear_support.add_solution(n_value, wcw)
 
             if self.log and (self.global_step - last_mo_eval) >= eval_mo_freq:
                 last_mo_eval = self.global_step
-                # Evaluation
                 gpi_returns_test_tasks = [
-                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
+                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[2] for ew in eval_weights
                 ]
+
+                filtered_front = list(filter_pareto_dominated(gpi_returns_test_tasks))
+
                 log_all_multi_policy_metrics(
                     current_front=gpi_returns_test_tasks,
                     hv_ref_point=ref_point,
@@ -957,7 +964,35 @@ class GPIPD(MOPolicy, MOAgent):
                     n_sample_weights=num_eval_weights_for_eval,
                     ref_front=known_pareto_front,
                 )
-                # This is the EU computed in the paper
+
+                hv = hypervolume(ref_point, filtered_front)
+                print("HV:", hv, "step:", self.global_step)
+
+                ctrl_metrics = compute_all_controllability_metrics(
+                    np.array(eval_weights),
+                    np.array(gpi_returns_test_tasks)
+                )
+                print("Preference controllability:", ctrl_metrics["preference_controllability"])
+                print("Local sensitivity:", ctrl_metrics["local_sensitivity"])
+                print("Objective controllability:", [v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")])
+
+                if self.log:
+                    wandb.log({
+                        "eval/preference_controllability": ctrl_metrics["preference_controllability"],
+                        "eval/local_sensitivity": ctrl_metrics["local_sensitivity"],
+                        **{f"eval/{k}": v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")},
+                    }, step=self.global_step)
+
+                if checkpoints:
+                    if hv > self.best_hv:
+                        self.best_hv = hv
+                        self.save(
+                            save_dir="checkpoints",
+                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}"
+                        )
+                        if self.log:
+                            wandb.log({"best/HV": self.best_hv}, step=self.global_step)
+
                 mean_gpi_returns_test_tasks = np.mean(
                     [np.dot(ew, q) for ew, q in zip(eval_weights, gpi_returns_test_tasks)], axis=0
                 )

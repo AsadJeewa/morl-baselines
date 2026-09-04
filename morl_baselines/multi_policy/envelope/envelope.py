@@ -17,7 +17,10 @@ from morl_baselines.common.buffer import ReplayBuffer
 from morl_baselines.common.evaluation import (
     log_all_multi_policy_metrics,
     log_episode_info,
+    compute_all_controllability_metrics
 )
+from morl_baselines.common.pareto import filter_pareto_dominated
+from morl_baselines.common.performance_indicators import hypervolume
 from morl_baselines.common.morl_algorithm import MOAgent, MOPolicy
 from morl_baselines.common.networks import (
     NatureCNN,
@@ -173,6 +176,7 @@ class Envelope(MOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
+        self.best_hv = -np.inf
 
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -618,7 +622,7 @@ class Envelope(MOPolicy, MOAgent):
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 current_front = [
-                    self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
+                    self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[2]
                     for ew in eval_weights
                 ]
                 log_all_multi_policy_metrics(
@@ -630,10 +634,33 @@ class Envelope(MOPolicy, MOAgent):
                     ref_front=known_pareto_front,
                 )
 
-            # Checkpoint
-            if checkpoints and self.global_step % save_freq == 0:
-                self.save(filename=f"{self.experiment_name}_{run_id}_{self.global_step}", save_replay_buffer=False)
-                print(f"Checkpoint saved at step {self.global_step}")
+                hv = hypervolume(ref_point, list(filter_pareto_dominated(current_front)))
+                print("HV:", hv, "step:", self.global_step)
+
+                ctrl_metrics = compute_all_controllability_metrics(
+                    np.array(eval_weights),
+                    np.array(current_front)
+                )
+                print("Preference controllability:", ctrl_metrics["preference_controllability"])
+                print("Local sensitivity:", ctrl_metrics["local_sensitivity"])
+                print("Objective controllability:", [v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")])
+
+                if self.log:
+                    wandb.log({
+                        "eval/preference_controllability": ctrl_metrics["preference_controllability"],
+                        "eval/local_sensitivity": ctrl_metrics["local_sensitivity"],
+                        **{f"eval/{k}": v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")},
+                    }, step=self.global_step)
+
+                if checkpoints:
+                    if hv > self.best_hv:
+                        self.best_hv = hv
+                        self.save(
+                            save_dir="checkpoints",
+                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}"
+                        )
+                        if self.log:
+                            wandb.log({"best/HV": self.best_hv}, step=self.global_step)
 
             if terminated or truncated:
                 obs, _ = self.env.reset()
