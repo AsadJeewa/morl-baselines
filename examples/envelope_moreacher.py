@@ -11,7 +11,7 @@ from morl_baselines.common.weights import equally_spaced_weights, random_weights
 def main(total_timesteps: int=500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = ""):
     log = str(log).lower() == "true"    
     def make_env():
-        env = mo_gym.make("mo-reacher-v5")
+        env = mo_gym.make("mo-reacher-v4")
         env = MORecordEpisodeStatistics(env, gamma=0.99)
         # env = MOSyncVectorEnv(env)
         return env
@@ -41,7 +41,7 @@ def main(total_timesteps: int=500000, exp_type: str = "default", wandb_mode: str
         gamma=0.99,
         batch_size=128,
         net_arch=[256, 256, 256, 256],
-        buffer_size=int(5e5),
+        buffer_size=int(2e6),
         initial_epsilon=1.0,
         final_epsilon=0.05,
         epsilon_decay_steps=50000,
@@ -52,7 +52,7 @@ def main(total_timesteps: int=500000, exp_type: str = "default", wandb_mode: str
         per=True,
         envelope=True,
         gradient_updates=1,
-        target_net_update_freq=2000,  # 1000,  # 500 reduce by gradient updates
+        target_net_update_freq=1000,  # 1000,  # 500 reduce by gradient updates
         tau=1,
         log=log,
         wandb_mode=wandb_mode,
@@ -68,7 +68,7 @@ def main(total_timesteps: int=500000, exp_type: str = "default", wandb_mode: str
         use_argmax_for_envelope=use_argmax_for_envelope,
         use_train_weights_for_envelope=use_train_weights_for_envelope,  
         eval_env=eval_env,
-        ref_point=np.array([-50, -50, -50, -50]),
+        ref_point=np.array([-100, -100, -100, -100]),
         known_pareto_front=None,
         eval_weights = None,
         num_eval_weights_for_front=100,

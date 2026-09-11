@@ -13,7 +13,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 1, exp_type: str =
     gpi_pd = str(gpi_pd).lower() == "true"
     log = str(log).lower() == "true"
     def make_env():
-        env = mo_gym.make("mo-reacher-v5")
+        env = mo_gym.make("mo-reacher-v4")
         env = MORecordEpisodeStatistics(env, gamma=0.99)
         return env
 
@@ -63,7 +63,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 1, exp_type: str =
     agent.train(
         total_timesteps=total_timesteps,
         eval_env=eval_env,
-        ref_point=np.array([-50, -50, -50, -50]),
+        ref_point=np.array([-100, -100, -100, -100]),
         known_pareto_front=None,
         weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,
