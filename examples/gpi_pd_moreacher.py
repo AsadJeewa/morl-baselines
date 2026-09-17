@@ -13,7 +13,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, g: int = 1, exp_type: str =
     gpi_pd = str(gpi_pd).lower() == "true"
     log = str(log).lower() == "true"
     def make_env():
-        env = mo_gym.make("mo-reacher-v4")
+        env = mo_gym.make("mo-reacher-v5")
         env = MORecordEpisodeStatistics(env, gamma=0.99)
         return env
 
