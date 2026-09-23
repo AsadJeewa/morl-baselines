@@ -951,7 +951,7 @@ class GPIPD(MOPolicy, MOAgent):
             if self.log and (self.global_step - last_mo_eval) >= eval_mo_freq:
                 last_mo_eval = self.global_step
                 gpi_returns_test_tasks = [
-                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[2] for ew in eval_weights
+                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
                 ]
 
                 filtered_front = list(filter_pareto_dominated(gpi_returns_test_tasks))
@@ -981,7 +981,7 @@ class GPIPD(MOPolicy, MOAgent):
                         "eval/preference_controllability": ctrl_metrics["preference_controllability"],
                         "eval/local_sensitivity": ctrl_metrics["local_sensitivity"],
                         **{f"eval/{k}": v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")},
-                    }, step=self.global_step)
+                    }) # , step=self.global_step)
 
                 if checkpoints:
                     if hv > self.best_hv:
