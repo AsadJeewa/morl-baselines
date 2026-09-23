@@ -259,6 +259,7 @@ class Envelope(MOPolicy, MOAgent):
         saved_params["config"] = {
             "net_arch": self.net_arch,
             "envelope": self.envelope,
+            "gamma": self.gamma
         }
         saved_params["seed"] = self.seed
         if save_replay_buffer:
@@ -622,7 +623,7 @@ class Envelope(MOPolicy, MOAgent):
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 current_front = [
-                    self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[2]
+                    self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
                     for ew in eval_weights
                 ]
                 log_all_multi_policy_metrics(
@@ -650,7 +651,7 @@ class Envelope(MOPolicy, MOAgent):
                         "eval/preference_controllability": ctrl_metrics["preference_controllability"],
                         "eval/local_sensitivity": ctrl_metrics["local_sensitivity"],
                         **{f"eval/{k}": v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")},
-                    }, step=self.global_step)
+                    }) # , step=self.global_step)
 
                 if checkpoints:
                     if hv > self.best_hv:
