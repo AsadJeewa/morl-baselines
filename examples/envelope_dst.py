@@ -9,7 +9,7 @@ def main(exp_type: str = "default", total_timesteps: int = 200000, wandb_mode: s
     log = str(log).lower() == "true" 
     def make_env():
         env = mo_gym.make("deep-sea-treasure-v0")
-        env = MORecordEpisodeStatistics(env, gamma=0.98)
+        env = MORecordEpisodeStatistics(env, gamma=0.99)
         # env = MOSyncVectorEnv(env)
         return env
 

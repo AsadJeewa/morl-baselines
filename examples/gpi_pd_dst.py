@@ -67,7 +67,8 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, exp_type: str = None, wandb
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
         weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,
-        # eval_freq=1000,
+        num_eval_weights_for_front=50,
+        eval_freq=1000,
         checkpoints=True,
         save_freq=100000,
     )

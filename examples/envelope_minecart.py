@@ -84,7 +84,7 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         ref_point=np.array([-1, -1, -200.0]),
         known_pareto_front=env.unwrapped.pareto_front(gamma=0.98),
         eval_weights = eval_weights,
-        num_eval_weights_for_front=100,
+        num_eval_weights_for_front=50,
         eval_freq=1000,
         # reset_num_timesteps=False,
         # reset_learning_starts=False,

@@ -62,6 +62,8 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, exp_type: str = None, wandb
         total_timesteps=total_timesteps,
         eval_env=eval_env,
         ref_point=np.array([-1.0, -1.0, -200.0]),
+        num_eval_weights_for_front=50,
+        eval_freq=1000,
         known_pareto_front=None,
         weight_selection_algo=algo,# here
         timesteps_per_iter=timesteps_per_iter,

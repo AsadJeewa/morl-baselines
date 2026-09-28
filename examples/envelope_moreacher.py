@@ -38,7 +38,7 @@ def main(total_timesteps: int=2000000, exp_type: str = "default", wandb_mode: st
         seed=seed,
         max_grad_norm=1.0,#0.1 CHECK WAS TOO LOW
         learning_rate=1e-4,# 3e-4 CHECK WAS LOW 
-        gamma=0.98,
+        gamma=0.99,
         batch_size=128,
         net_arch=[256, 256, 256, 256],
         buffer_size=int(5e5),
@@ -71,7 +71,7 @@ def main(total_timesteps: int=2000000, exp_type: str = "default", wandb_mode: st
         ref_point=np.array([-100, -100, -100, -100]),
         known_pareto_front=None,
         eval_weights = None,
-        num_eval_weights_for_front=100,
+        num_eval_weights_for_front=50,
         eval_freq=1000,
         # reset_num_timesteps=False,
         # reset_learning_starts=False,
