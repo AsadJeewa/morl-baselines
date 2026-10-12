@@ -27,7 +27,7 @@ def main(algo: str = "gpi-ls", gpi_pd: bool = False, exp_type: str = None, wandb
         num_nets=2,
         max_grad_norm=None,
         learning_rate=learning_rate,
-        gamma=0.98,
+        gamma=0.99,
         batch_size=batch_size,
         net_arch=[256, 256],
         buffer_size=int(1e6),
