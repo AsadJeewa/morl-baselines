@@ -654,6 +654,7 @@ class Envelope(MOPolicy, MOAgent):
                     }) # , step=self.global_step)
 
                 if checkpoints:
+                    self.save(save_dir="weights", filename=f"{self.experiment_name}_{run_id}_seed{self.seed}", save_replay_buffer=False)
                     if hv > self.best_hv:
                         self.best_hv = hv
                         self.save(
