@@ -527,7 +527,7 @@ class Envelope(MOPolicy, MOAgent):
         eval_weights: Optional[np.ndarray] = None,
         use_argmax_for_envelope: bool = True,
         use_train_weights_for_envelope: bool = False,
-        checkpoints: bool = False,
+        checkpoints: bool = True,
         save_freq: int = 10000,
         reset_learning_starts: bool = False,
         verbose: bool = False,
@@ -621,6 +621,10 @@ class Envelope(MOPolicy, MOAgent):
             if self.global_step >= self.learning_starts:
                 self.update()
 
+            if checkpoints and self.global_step % save_freq == 0:
+                self.save(save_dir="weights", filename=f"{self.experiment_name}_{run_id}_seed{self.seed}_{self.global_step}", save_replay_buffer=False)
+                print(f"Checkpoint saved at step {self.global_step}")
+
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 current_front = [
                     self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
@@ -654,12 +658,12 @@ class Envelope(MOPolicy, MOAgent):
                     }) # , step=self.global_step)
 
                 if checkpoints:
-                    self.save(save_dir="weights", filename=f"{self.experiment_name}_{run_id}_seed{self.seed}", save_replay_buffer=False)
                     if hv > self.best_hv:
                         self.best_hv = hv
                         self.save(
                             save_dir="checkpoints",
-                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}"
+                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}",
+                            save_replay_buffer=False,
                         )
                         if self.log:
                             wandb.log({"best/HV": self.best_hv}, step=self.global_step)
