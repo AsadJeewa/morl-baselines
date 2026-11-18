@@ -655,7 +655,8 @@ class Envelope(MOPolicy, MOAgent):
                         "eval/preference_controllability": ctrl_metrics["preference_controllability"],
                         "eval/local_sensitivity": ctrl_metrics["local_sensitivity"],
                         **{f"eval/{k}": v for k, v in ctrl_metrics.items() if k.startswith("objective_controllability")},
-                    }) # , step=self.global_step)
+                        "global_step": self.global_step,
+                    })
 
                 if checkpoints:
                     if hv > self.best_hv:
@@ -666,7 +667,7 @@ class Envelope(MOPolicy, MOAgent):
                             save_replay_buffer=False,
                         )
                         if self.log:
-                            wandb.log({"best/HV": self.best_hv}, step=self.global_step)
+                            wandb.log({"best/HV": self.best_hv, "global_step": self.global_step})
 
             if terminated or truncated:
                 obs, _ = self.env.reset()

@@ -988,7 +988,8 @@ class GPIPD(MOPolicy, MOAgent):
                         self.best_hv = hv
                         self.save(
                             save_dir="checkpoints",
-                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}"
+                            filename=f"best_{self.experiment_name}_{run_id}_seed{self.seed}",
+                            save_replay_buffer=False,
                         )
                         if self.log:
                             wandb.log({"best/HV": self.best_hv}, step=self.global_step)
@@ -999,7 +1000,7 @@ class GPIPD(MOPolicy, MOAgent):
                 wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
             if checkpoints and self.global_step % save_freq == 0:
-                self.save(filename=f"{self.experiment_name}_{run_id}_{self.global_step}", save_replay_buffer=False)
+                self.save(filename=f"{self.experiment_name}_{run_id}_seed{self.seed}_{self.global_step}", save_replay_buffer=False)
                 print(f"Checkpoint saved at step {self.global_step}")
         self.close_wandb()
 
