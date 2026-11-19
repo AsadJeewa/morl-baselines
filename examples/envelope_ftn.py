@@ -6,7 +6,7 @@ from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 from morl_baselines.multi_policy.envelope.envelope import Envelope
 from morl_baselines.common.weights import equally_spaced_weights, random_weights, extrema_weights, equally_spaced_train_and_eval_weights
 
-def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", depth: int = 6, learning_rate: float = 2e-4, gradient_updates: int = 5, batch_size: int = 32, tau: float = 0.1):
+def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: str = "online", log: bool = True, seed: int = 0, use_argmax_for_envelope: bool = False, use_train_weights_for_envelope: bool = False, exp_notes: str = "", depth: int = 6, learning_rate: float = 2e-4, gradient_updates: int = 5, batch_size: int = 32, tau: float = 0.1, initial_epsilon: float = 1.0, final_epsilon: float = 0.05, epsilon_decay_fraction: float = 0.6):
     log = str(log).lower() == "true"    
     def make_env():
         env = mo_gym.make("fruit-tree-v0",depth=depth)
@@ -30,9 +30,9 @@ def main(total_timesteps: int = 500000, exp_type: str = "default", wandb_mode: s
         batch_size=batch_size,
         net_arch=[256, 256],
         buffer_size=int(1e5),
-        initial_epsilon=1.0,
-        final_epsilon=0.05,
-        epsilon_decay_steps=total_timesteps*0.6,
+        initial_epsilon=initial_epsilon,
+        final_epsilon=final_epsilon,
+        epsilon_decay_steps=int(total_timesteps * epsilon_decay_fraction),
         initial_homotopy_lambda=0.9,
         final_homotopy_lambda=0.85,
         homotopy_decay_steps=10000,

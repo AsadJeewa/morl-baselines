@@ -1,0 +1,35 @@
+project: MORL-Baselines
+
+program: sweep.py
+
+method: grid
+
+metric:
+  name: eval/hypervolume
+  goal: maximize
+
+parameters:
+  algo:
+    value: gpi
+
+  # whatever string your sweep.py maps to fruit-tree-v0 (default depth 6, 6 objectives)
+  env:
+    value: ftn
+
+  total_timesteps:
+    value: 500000
+
+  learning_rate:
+    values: [0.0001, 0.0003, 0.001]
+
+  gradient_updates:
+    values: [8, 20]
+
+  batch_size:
+    values: [64, 128]
+
+  tau:
+    value: 1.0
+
+  seed:
+    values: [1, 2]
