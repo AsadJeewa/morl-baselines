@@ -1,74 +1,92 @@
 import fire
 import mo_gymnasium as mo_gym
 import numpy as np
-
 from morl_baselines.multi_policy.gpi_pd.gpi_pd import GPIPD
 from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 
-# from gymnasium.wrappers.record_video import RecordVideo
+# GPI-LS settings follow Alegre et al. (2023), Appendix 2.2 (the Minecart experiments, the closest
+# deep discrete-action setup; the paper has no FTN experiments):
+#   MLP 4 x 256 with Dropout + LayerNorm, Adam lr 3e-4, mini-batch 256, G = 20 gradient updates per
+#   environment step, epsilon-greedy annealed linearly 1 -> 0.05 over the first 50,000 steps,
+#   GPI-LS = model-free with a plain uniform replay buffer (no Dyna, no prioritisation).
+# NOT stated in the paper (assumptions, marked): gamma for FTN, buffer size, target update,
+#   learning start. timesteps_per_iter is smaller than the paper's Minecart value (about 10k) because the
+#   FTN front has 64 points and GPI-LS adds roughly one weight per iteration.
 
-def main(algo: str = "gpi-ls", gpi_pd: bool = False, exp_type: str = None, wandb_mode: str = "online", log: bool = True, total_timesteps: int = 150000, timesteps_per_iter: int = 10000, seed: int = 0, exp_notes: str = "", depth: int = 6, learning_rate: float = 3e-4, batch_size: int = 128, tau: float = 1, gradient_updates: int = 8, initial_epsilon: float = 1.0, final_epsilon: float = 0.05, epsilon_decay_fraction: float = 0.6):
-    gpi_pd = str(gpi_pd).lower() == "true"
+
+def main(
+    algo: str = "gpi-ls",
+    total_timesteps: int = 300000,
+    timesteps_per_iter: int = 2000,
+    wandb_mode: str = "online",
+    log: bool = True,
+    seed: int = 0,
+    exp_notes: str = "",
+    depth: int = 6,
+    learning_rate: float = 3e-4,
+    batch_size: int = 256,
+    gradient_updates: int = 20,
+    initial_epsilon: float = 1.0,
+    final_epsilon: float = 0.05,
+    epsilon_decay_steps: int = 50000,
+    buffer_size: int = int(1e5),             # assumption
+    learning_starts: int = 1000,             # assumption
+    target_net_update_freq: int = 100,       # assumption (hard copy: tau = 1)
+    num_eval_weights_for_front: int = 200,
+    eval_freq: int = 5000,
+):
     log = str(log).lower() == "true"
+
     def make_env():
         env = mo_gym.make("fruit-tree-v0", depth=depth)
         env = MORecordEpisodeStatistics(env, gamma=0.99)
         return env
 
     env = make_env()
-    eval_env = make_env()  # RecordVideo(make_env(), "videos/minecart/", episode_trigger=lambda e: e % 1000 == 0)
+    eval_env = make_env()
 
-    experiment_name = "GPI_FruitTree_"+str(total_timesteps)+"_"+exp_notes+"_"+str(seed)
+    experiment_name = "GPI_FruitTree_" + str(total_timesteps) + "_paper_" + exp_notes + "_" + str(seed)
     agent = GPIPD(
         env,
         seed=seed,
         num_nets=2,
         max_grad_norm=None,
         learning_rate=learning_rate,
-        gamma=0.99,
+        gamma=0.99,                          # assumption
         batch_size=batch_size,
-        net_arch=[256, 256],
-        buffer_size=int(1e5),
+        net_arch=[256, 256, 256, 256],
+        buffer_size=buffer_size,
         initial_epsilon=initial_epsilon,
         final_epsilon=final_epsilon,
-        epsilon_decay_steps=int(total_timesteps * epsilon_decay_fraction),
-        learning_starts=5000,
-        alpha_per=0.6,
-        min_priority=0.01,
-        per=gpi_pd,
-        gpi_pd=gpi_pd,
+        epsilon_decay_steps=epsilon_decay_steps,
+        learning_starts=learning_starts,
+        per=False,                           # GPI-LS: uniform replay
+        gpi_pd=False,                        # no GPI prioritisation
         use_gpi=True,
+        dyna=False,                          # GPI-LS is model-free
         gradient_updates=gradient_updates,
-        target_net_update_freq=100,
-        tau=tau,
-        dyna=gpi_pd,
-        dynamics_uncertainty_threshold=1.5,
-        dynamics_net_arch=[256, 256],
-        dynamics_buffer_size=int(1e5),
-        dynamics_rollout_batch_size=5000,
-        dynamics_train_freq=lambda t: 250,
-        dynamics_rollout_freq=250,
-        dynamics_rollout_starts=10000,
-        dynamics_rollout_len=5,
-        real_ratio=0.8,
+        target_net_update_freq=target_net_update_freq,
+        tau=1.0,
+        drop_rate=0.01,
+        layer_norm=True,
         log=log,
-        wandb_mode=wandb_mode,
+        wandb_mode=wandb_mode,               # fork-specific argument, as in your previous script
         project_name="MORL-Baselines",
         experiment_name=experiment_name,
-        group = experiment_name.rsplit("_", 1)[0]
+        group=experiment_name.rsplit("_", 1)[0],   # fork-specific argument, as in your previous script
     )
 
     agent.train(
         total_timesteps=total_timesteps,
         eval_env=eval_env,
         ref_point=np.zeros(env.unwrapped.reward_dim),
-        num_eval_weights_for_front=50,
-        eval_freq=5000,
-        known_pareto_front=None,
-        weight_selection_algo=algo,# here
+        known_pareto_front=env.unwrapped.pareto_front(gamma=0.99),
+        num_eval_weights_for_front=num_eval_weights_for_front,
+        eval_freq=eval_freq,
+        weight_selection_algo=algo,
         timesteps_per_iter=timesteps_per_iter,
         checkpoints=True,
-        save_freq=100000,
+        save_freq=100000,                    # fork-specific argument, as in your previous script
     )
 
 

@@ -14,7 +14,7 @@ from morl_baselines.multi_policy.envelope.envelope import Envelope
 
 
 def main(
-    total_timesteps: int = 30000,         # 5000 episodes x 6 steps (depth 6)
+    total_timesteps: int = 300000,         # 5000 episodes x 6 steps (depth 6)
     exp_type: str = "paper",
     wandb_mode: str = "online",
     log: bool = True,
